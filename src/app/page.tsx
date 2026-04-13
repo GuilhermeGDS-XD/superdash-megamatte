@@ -369,10 +369,6 @@ export default function HomePage() {
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     try {
-      // DEBUG: verificar sessão ativa
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log('[fetchCampaigns] sessão:', sessionData?.session?.user?.id ?? 'SEM SESSÃO');
-
       let baseQuery = supabase
         .from('campaigns')
         .select('*');
