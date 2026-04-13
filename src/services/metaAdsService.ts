@@ -11,11 +11,12 @@ export class MetaAdsService {
     accessToken: string
   ): Promise<MetaAdsMetrics[]> {
     try {
-      const apiToken = process.env.META_ADS_ACCESS_TOKEN || accessToken;
+      // Prioriza token passado por parâmetro (do banco OAuth) sobre env var
+      const apiToken = accessToken || process.env.META_ADS_ACCESS_TOKEN;
 
       if (!apiToken) {
-        console.warn('Meta Ads: Token ausente, usando fallback mockado');
-        return this.generateMockMetrics(periodDays);
+        console.warn('Meta Ads: Token ausente, retornando vazio');
+        return [];
       }
 
       // Parâmetros para a Graph API
