@@ -47,6 +47,12 @@ export async function GET(request: Request) {
       } catch { /* token inválido, continua com string vazia */ }
     }
 
+    console.log(`[meta-metrics] token obtido: ${apiToken ? 'SIM ('+apiToken.substring(0,10)+'...)' : 'NÃO'}`);
+
+    if (!apiToken) {
+      return NextResponse.json({ error: 'Token Meta não configurado. Conecte uma conta Meta.', debug: 'no_token' }, { status: 500 });
+    }
+
     // 3. Busca os dados de performance geral da campanha
     const metrics = await MetaAdsService.getCampaignMetrics(
       campaignId, 
