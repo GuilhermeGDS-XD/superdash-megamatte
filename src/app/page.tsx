@@ -647,16 +647,7 @@ export default function HomePage() {
         </div>
         {user && (
           <div className="flex flex-wrap gap-4">
-            {canViewLogs(user.role, user.can_view_logs) && (
-              <Link
-                href="/admin/logs"
-                className="bg-white border-2 border-slate-100 hover:border-blue-100 text-slate-400 hover:text-blue-600 font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-100 uppercase tracking-widest text-[10px]"
-                title="Histórico de Logs"
-              >
-                <History size={18} strokeWidth={3} />
-                Logs
-              </Link>
-            )}
+
             <Link
               href="/admin/create-campaign"
               className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-8 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/20 uppercase tracking-widest text-xs"

@@ -27,13 +27,14 @@ export async function POST(request: Request) {
         // Verifica se há pelo menos UM dia com qualquer métrica acima de 0 (custo, impressões, cliques ou conversões)
         const hasActivity = metrics.some(m => m.cost > 0 || m.impressions > 0 || m.conversions > 0 || m.clicks > 0);
         
-        // Se tem atividade e a campanha não foi finalizada, consideramos Ativa.
-        // Se não tem atividade NENHUMA em 7 dias, consideramos Pausada.
+        // Se não tem token Meta configurado ou não há dados, não altera o status
+        if (!hasActivity && !process.env.META_ADS_ACCESS_TOKEN) return;
+
         const newStatus = hasActivity ? 'Ativa' : 'Pausada';
 
         if (camp.status !== newStatus) {
             updatedStatuses[camp.id] = newStatus;
-            await supabaseAdmin.from('campaigns').update({ status: newStatus }).eq('id', camp.id);
+            // NÃO persiste no banco — apenas retorna sugestão ao frontend
         }
       } catch (err: any) {
         console.error(`Erro ao validar status da campanha ${camp.id}:`, err.message);
