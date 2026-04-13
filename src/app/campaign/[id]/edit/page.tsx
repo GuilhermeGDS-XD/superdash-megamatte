@@ -104,21 +104,31 @@ export default function EditCampaignPage() {
     setStatus(null);
 
     try {
+      // Debug: Log dos dados sendo salvos
+      const updateData = {
+        name: formData.name,
+        platforms: formData.platforms,
+        google_campaign_id: formData.platforms.includes('GOOGLE_ADS') ? formData.google_id : null,
+        meta_campaign_id: formData.platforms.includes('META_ADS') ? formData.meta_id : null,
+        google_start_date: formData.platforms.includes('GOOGLE_ADS') ? (formData.google_start || null) : null,
+        meta_start_date: formData.platforms.includes('META_ADS') ? (formData.meta_start || null) : null,
+        ecompay_product_id: formData.ecompay_product_id || null,
+        spotter_list_id: formData.spotter_list_id || null,
+      };
+      console.log('📝 Dados sendo salvos:', updateData);
+      console.log('🔑 ecompay_product_id:', formData.ecompay_product_id, 'Type:', typeof formData.ecompay_product_id);
+      console.log('🔑 spotter_list_id:', formData.spotter_list_id, 'Type:', typeof formData.spotter_list_id);
+
       const { error } = await supabase
         .from('campaigns')
-        .update({
-          name: formData.name,
-          platforms: formData.platforms,
-          google_campaign_id: formData.platforms.includes('GOOGLE_ADS') ? formData.google_id : null,
-          meta_campaign_id: formData.platforms.includes('META_ADS') ? formData.meta_id : null,
-          google_start_date: formData.platforms.includes('GOOGLE_ADS') ? (formData.google_start || null) : null,
-          meta_start_date: formData.platforms.includes('META_ADS') ? (formData.meta_start || null) : null,
-          ecompay_product_id: formData.ecompay_product_id || null,
-          spotter_list_id: formData.spotter_list_id || null,
-        })
+        .update(updateData)
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao salvar:', error);
+        throw error;
+      }
+      console.log('✅ Campanha atualizada com sucesso!');
 
       // Registrar Log
       await supabase.from('logs').insert({
