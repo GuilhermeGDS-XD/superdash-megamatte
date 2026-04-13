@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 import { EncryptionService } from '@/services/encryptionService';
 
 /**
@@ -42,17 +43,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Busca sessão no Supabase
+    // 3. Busca sessão + usuário autenticado em paralelo
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('meta_sessions')
-      .select('id, access_token, accounts, expires_at')
-      .eq('id', sessionId)
-      .single();
+    // Lê usuário autenticado via cookies do request (Supabase Auth)
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) { return request.cookies.get(name)?.value ?? ''; },
+          set() {},
+          remove() {},
+        },
+      }
+    );
+
+    const [sessionResult, authResult] = await Promise.all([
+      supabase.from('meta_sessions').select('id, access_token, accounts, expires_at').eq('id', sessionId).single(),
+      supabaseAuth.auth.getUser(),
+    ]);
+
+    const { data: sessionData, error: sessionError } = sessionResult;
+    const { data: { user }, error: authError } = authResult;
+
+    if (!user) {
+      console.error('❌ Usuário não autenticado:', authError?.message);
+      return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 });
+    }
+
+    console.log('✅ Usuário autenticado:', user.email);
 
     if (sessionError || !sessionData) {
       console.error('❌ Sessão não encontrada no Supabase:', sessionError?.message);
@@ -96,27 +119,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7. TODO: Implementar autenticação real
-    const userId = 'demo-user-1';
-    console.warn('⚠️  USANDO PLACEHOLDER DE USER - IMPLEMENTAR AUTENTICAÇÃO REAL');
-
-    // 8. Salva em meta_accounts
+    // 7. Salva em meta_accounts usando o user_id real do Supabase Auth
     console.log('💾 Salvando meta_account no Supabase...');
-    const { error: upsertError, data: savedAccount } = await supabase
+
+    // Delete+Insert em vez de upsert (constraint UNIQUE é em (user_id,account_id))
+    await supabase.from('meta_accounts')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('account_id', selectedAccount.account_id);
+
+    const { error: insertError, data: savedAccount } = await supabase
       .from('meta_accounts')
-      .upsert(
-        {
-          user_id: userId,
-          account_id: selectedAccount.account_id,
-          account_name: selectedAccount.account_name,
-          access_token: encryptedToken,
-          token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'active',
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,account_id' }
-      )
+      .insert({
+        user_id: user.id,
+        account_id: selectedAccount.account_id,
+        account_name: selectedAccount.account_name,
+        access_token: encryptedToken,
+        token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      })
       .select();
+
+    const upsertError = insertError;
 
     if (upsertError) {
       console.error('❌ Falha ao salvar meta_account:', upsertError);
