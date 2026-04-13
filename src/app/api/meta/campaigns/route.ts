@@ -97,6 +97,7 @@ export async function POST(request: Request) {
           name: campaign.name,
           status: campaign.effective_status === 'ACTIVE' ? 'Ativa' : 'Pausada',
           meta_account_id: actAccountId,
+          meta_start_date: campaign.created_time ? new Date(campaign.created_time).toISOString() : null,
         };
 
         if (hasMetaAccountName) {
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
             const insertPayload: Record<string, any> = {
               ...payload,
               platforms: ['META_ADS'],
-              created_at: new Date().toISOString(),
+              created_at: campaign.created_time ? new Date(campaign.created_time).toISOString() : new Date().toISOString(),
             };
 
             const { error: insertError } = await supabaseAdmin
