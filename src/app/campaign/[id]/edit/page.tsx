@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { useUser } from '@/hooks/useUser';
 import { useEcompayProducts } from '@/hooks/useEcompayProducts';
 import { EcompayProductSelect } from '@/components/ui/EcompayProductSelect';
-import { useSpotterFunnels } from '@/hooks/useSpotter';
+import { useSpotterOrigins } from '@/hooks/useSpotter';
 import { SpotterListSelect } from '@/components/ui/SpotterListSelect';
 
 // Ícones SVG customizados para Google e Meta
@@ -53,7 +53,7 @@ export default function EditCampaignPage() {
   });
   
   const { products: ecompayProducts, loading: ecompayLoading } = useEcompayProducts();
-  const { funnels: spotterFunnels, loading: spotterLoading } = useSpotterFunnels();
+  const { origins: spotterOrigins, loading: spotterLoading } = useSpotterOrigins();
 
   const supabase = createClient();
 
@@ -308,11 +308,11 @@ export default function EditCampaignPage() {
 
           {/* Lista Exact Spotter (Opcional) */}
           <div className="space-y-4">
-            <label className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 pl-2">Lista Exact Spotter (Opcional)</label>
+            <label className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 pl-2">Origem Exact Spotter (Opcional)</label>
             <SpotterListSelect
               value={formData.spotter_list_id}
               onChange={(id) => setFormData({...formData, spotter_list_id: id})}
-              funnels={spotterFunnels}
+              origins={spotterOrigins}
               loading={spotterLoading}
             />
             <p className="text-xs text-slate-400 pl-2">

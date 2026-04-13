@@ -84,6 +84,12 @@ export interface SpotterFunnel {
   active: boolean;
 }
 
+export interface SpotterOrigin {
+  id: number;
+  value: string;
+  active: boolean;
+}
+
 // Busca todos os funis disponíveis
 export async function getFunnels(): Promise<SpotterFunnel[]> {
   const response = await fetchWithTimeout(`${BASE_URL}/Funnels`, {
@@ -92,6 +98,20 @@ export async function getFunnels(): Promise<SpotterFunnel[]> {
 
   if (!response.ok) {
     throw new Error(`Erro ao buscar funis: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : data?.value ?? [];
+}
+
+// Busca todas as origens disponíveis
+export async function getOrigins(): Promise<SpotterOrigin[]> {
+  const response = await fetchWithTimeout(`${BASE_URL}/Origins`, {
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erro ao buscar origens: ${response.status}`);
   }
 
   const data = await response.json();

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, X, ListTree, Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface SpotterFunnel {
+interface SpotterOrigin {
   id: number;
   value: string;
   active: boolean;
@@ -13,22 +13,22 @@ interface SpotterFunnel {
 interface Props {
   value: string;
   onChange: (id: string) => void;
-  funnels: SpotterFunnel[];
+  origins: SpotterOrigin[];
   loading: boolean;
 }
 
-export function SpotterListSelect({ value, onChange, funnels, loading }: Props) {
+export function SpotterListSelect({ value, onChange, origins, loading }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const selected = funnels.find((f) => String(f.id) === value);
+  const selected = origins.find((o) => String(o.id) === value);
 
-  const visible = funnels.filter((f) => showInactive || f.active);
-  const filtered = visible.filter((f) =>
-    f.value.toLowerCase().includes(search.toLowerCase())
+  const visible = origins.filter((o) => showInactive || o.active);
+  const filtered = visible.filter((o) =>
+    o.value.toLowerCase().includes(search.toLowerCase())
   );
 
   // Fecha ao clicar fora
@@ -50,8 +50,8 @@ export function SpotterListSelect({ value, onChange, funnels, loading }: Props) 
     }
   }, [open]);
 
-  const handleSelect = (funnel: SpotterFunnel) => {
-    onChange(String(funnel.id));
+  const handleSelect = (origin: SpotterOrigin) => {
+    onChange(String(origin.id));
     setOpen(false);
     setSearch('');
   };
@@ -90,12 +90,12 @@ export function SpotterListSelect({ value, onChange, funnels, loading }: Props) 
           <div className="min-w-0">
             {selected ? (
               <>
-                <p className="text-xs font-black uppercase tracking-widest text-indigo-500 leading-none mb-0.5">Funil selecionado</p>
+                <p className="text-xs font-black uppercase tracking-widest text-indigo-500 leading-none mb-0.5">Origem selecionada</p>
                 <p className="text-sm font-bold text-slate-900 truncate">{selected.value}</p>
               </>
             ) : (
               <p className="text-base font-bold text-slate-400">
-                {loading ? 'Carregando funis...' : `Selecionar funil${funnels.length > 0 ? ` (${funnels.filter(f => f.active).length} ativos)` : '...'}`}
+                {loading ? 'Carregando origens...' : `Selecionar origem${origins.length > 0 ? ` (${origins.filter(o => o.active).length} ativas)` : '...'}`}
               </p>
             )}
           </div>
@@ -129,7 +129,7 @@ export function SpotterListSelect({ value, onChange, funnels, loading }: Props) 
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar funil..."
+                placeholder="Buscar origem..."
                 className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400 placeholder:font-normal"
               />
               {search && (
@@ -144,7 +144,7 @@ export function SpotterListSelect({ value, onChange, funnels, loading }: Props) 
             </div>
             <div className="flex items-center justify-between mt-2 pl-1">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                {filtered.length} funil{filtered.length !== 1 ? 'is' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+                {filtered.length} origem{filtered.length !== 1 ? 's' : ''} encontrada{filtered.length !== 1 ? 's' : ''}
               </p>
               <button
                 type="button"
@@ -175,17 +175,17 @@ export function SpotterListSelect({ value, onChange, funnels, loading }: Props) 
             {filtered.length === 0 ? (
               <div className="px-5 py-8 text-center">
                 <Search size={24} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-sm font-bold text-slate-400">Nenhum funil encontrado</p>
+                <p className="text-sm font-bold text-slate-400">Nenhuma origem encontrada</p>
                 <p className="text-xs text-slate-300 mt-1">Tente outros termos de busca</p>
               </div>
             ) : (
-              filtered.map((funnel) => {
-                const isSelected = String(funnel.id) === value;
+              filtered.map((origin) => {
+                const isSelected = String(origin.id) === value;
                 return (
                   <button
-                    key={funnel.id}
+                    key={origin.id}
                     type="button"
-                    onClick={() => handleSelect(funnel)}
+                    onClick={() => handleSelect(origin)}
                     className={cn(
                       'w-full flex items-center gap-3 px-5 py-3 text-left transition-colors',
                       isSelected
@@ -203,17 +203,17 @@ export function SpotterListSelect({ value, onChange, funnels, loading }: Props) 
                       'text-sm font-semibold truncate flex-1',
                       isSelected && 'font-bold'
                     )}>
-                      {funnel.value}
+                      {origin.value}
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
-                      {!funnel.active && (
+                      {!origin.active && (
                         <span className="text-[10px] font-bold uppercase tracking-widest bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full">
-                          Inativo
+                          Inativa
                         </span>
                       )}
                       {isSelected && (
                         <span className="text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white px-2 py-0.5 rounded-full">
-                          Selecionado
+                          Selecionada
                         </span>
                       )}
                     </div>

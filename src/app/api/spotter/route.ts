@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLeads, getFunnels, computeMetrics, STAGES_VENDA } from '@/services/spotterService';
+import { getLeads, getFunnels, getOrigins, computeMetrics, STAGES_VENDA } from '@/services/spotterService';
 import type { SpotterLead } from '@/services/spotterService';
 
 function buildAggregations(leads: SpotterLead[]) {
@@ -48,6 +48,11 @@ export async function GET(request: NextRequest) {
     if (type === 'funnels') {
       const funnels = await getFunnels();
       return NextResponse.json({ funnels });
+    }
+
+    if (type === 'origins') {
+      const origins = await getOrigins();
+      return NextResponse.json({ origins });
     }
 
     if (type === 'metrics') {

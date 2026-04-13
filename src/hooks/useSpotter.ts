@@ -152,3 +152,31 @@ export function useSpotterFunnels() {
 
   return { funnels, loading, error };
 }
+
+export function useSpotterOrigins() {
+  const [origins, setOrigins] = useState<{ id: number; value: string; active: boolean }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    fetch('/api/spotter?type=origins')
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelled) setOrigins(json.origins ?? []);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message ?? 'Erro ao carregar origens');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  return { origins, loading, error };
+}
+
