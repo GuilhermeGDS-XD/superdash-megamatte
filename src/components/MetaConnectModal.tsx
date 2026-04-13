@@ -1,0 +1,144 @@
+'use client';
+
+import { useState } from 'react';
+
+interface MetaConnectModalProps {
+  open: boolean;
+  onClose: () => void;
+  onConnecting?: (isConnecting: boolean) => void;
+}
+
+/**
+ * Componente: MetaConnectModal
+ * 
+ * Modal para conectar conta Meta
+ * Abre popup com login Meta quando usuário clica
+ */
+export function MetaConnectModal({
+  open,
+  onClose,
+  onConnecting,
+}: MetaConnectModalProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConnect = async () => {
+    setLoading(true);
+    setError(null);
+    onConnecting?.(true);
+
+    try {
+      // Abre popup com login Meta
+      const width = 500;
+      const height = 700;
+      const left = typeof window !== 'undefined' ? (window.innerWidth - width) / 2 : 0;
+      const top = typeof window !== 'undefined' ? (window.innerHeight - height) / 2 : 0;
+
+      const popup = window.open(
+        '/api/auth/meta/connect',
+        'MetaLogin',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      );
+
+      if (!popup) {
+        setError('Bloqueador de pop-ups ativado. Desative para continuar.');
+        setLoading(false);
+        onConnecting?.(false);
+        return;
+      }
+
+      // Monitora se o popup foi fechado
+      const checkPopup = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkPopup);
+          setLoading(false);
+          onConnecting?.(false);
+
+          // Aguarda um pouco para o servidor processar
+          setTimeout(() => {
+            // Recarrega para verificar se conectou
+            window.location.reload();
+          }, 1000);
+        }
+      }, 1000);
+    } catch (err) {
+      console.error('Error opening popup:', err);
+      setError('Erro ao abrir popup de login');
+      setLoading(false);
+      onConnecting?.(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-800">Conectar Meta</h2>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="mb-6">
+          <p className="text-gray-600 mb-4">
+            Autorize o acesso à sua conta Meta Business para sincronizar campanhas automaticamente.
+          </p>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-blue-600 text-lg">ℹ️</div>
+              <div className="text-sm text-blue-700">
+                <strong>Informações seguras:</strong> Seus tokens são criptografados e armazenados com segurança.
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="text-red-600 text-lg">⚠️</div>
+                <div className="text-sm text-red-700">{error}</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleConnect}
+            disabled={loading}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                Conectando...
+              </>
+            ) : (
+              <>
+                <span>🔗</span>
+                Conectar com Meta
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
