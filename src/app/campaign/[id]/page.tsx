@@ -915,7 +915,7 @@ export default function CampaignDashboard() {
       {/* ETAPA 5 — RESUMO COMERCIAL (Spotter) */}
       {campaign?.spotter_list_id && (
         <SpotterCommercialSummary
-          originId={campaign.spotter_list_id}
+          originId={Number(campaign.spotter_list_id)}
           period={actualPeriod}
           campaignId={id as string}
           campaignName={campaign?.name || ''}

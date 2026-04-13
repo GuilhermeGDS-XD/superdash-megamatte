@@ -221,10 +221,33 @@ export function useSpotterByOrigin(originId: number | null | undefined, since?: 
         throw new Error(err.error ?? `Erro ${response.status}`);
       }
 
-      const json = await response.json();
-      setData(json);
-      setLoading(false);
+      // Ler stream SSE corretamente
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const json = JSON.parse(line.slice(6));
+
+          if (json.type === 'done') {
+            setData(json);
+            setLoading(false);
+          } else if (json.type === 'error') {
+            throw new Error(json.message);
+          }
+        }
+      }
     } catch (err: any) {
+      console.error('❌ Erro ao carregar Spotter por origem:', err);
       setError(err.message ?? 'Erro ao carregar dados do Spotter por origem');
       setLoading(false);
     }
