@@ -31,28 +31,37 @@ export function useUser() {
               .select('*')
               .eq('id', authUser.id)
               .single();
-              
-            if (error) {
-              const authMetadata = authUser.user_metadata || {};
+
+            // role vem SEMPRE do public.users (fonte de verdade)
+            // fallback para user_metadata.role caso a query falhe (ex: RLS mal configurado)
+            // user_metadata.role é sincronizado automaticamente via trigger sync_role_to_metadata
+            const authMetadata = authUser.user_metadata || {};
+
+            if (error || !userProfile) {
+              console.warn('[useUser] Falha ao buscar public.users, usando fallback de metadata:', error?.message);
               return {
                 id: authUser.id,
                 email: authUser.email,
-                name: (authMetadata.full_name || authMetadata.name || authUser.email?.split('@')[0]) as string,
-                role: normalizeRole((authMetadata.role || 'MANAGER') as string)
-              };
-            } else {
-              const profile = userProfile as any;
-              const authMetadata = authUser.user_metadata || {};
-              return {
-                ...profile,
-                name: (profile.full_name || authMetadata.full_name || authMetadata.name || authUser.email?.split('@')[0]) as string,
-                role: normalizeRole((profile.role || authMetadata.role || 'MANAGER') as string)
+                full_name: authMetadata.full_name || authMetadata.name || authUser.email?.split('@')[0],
+                name: authMetadata.full_name || authMetadata.name || authUser.email?.split('@')[0],
+                role: normalizeRole((authMetadata.role || 'MANAGER') as string),
               };
             }
+
+            const profile = userProfile as any;
+            // role de public.users tem prioridade absoluta sobre metadata
+            const resolvedRole = normalizeRole(profile.role || authMetadata.role || 'MANAGER');
+
+            return {
+              ...profile,
+              full_name: profile.full_name || authMetadata.full_name || authMetadata.name || authUser.email?.split('@')[0],
+              name: profile.full_name || authMetadata.full_name || authMetadata.name || authUser.email?.split('@')[0],
+              role: resolvedRole,
+            };
           }
           return null;
         } catch (err) {
-          console.error('Unexpected error in useUser:', err);
+          console.error('[useUser] Erro inesperado:', err);
           return null;
         }
       })();
@@ -63,8 +72,6 @@ export function useUser() {
       cachedProfile = result;
       setUser(result);
     } finally {
-      // Permitir que as próximas tentativas no mesmo ciclo peguem a promessa, 
-      // mas limpe em seguida pra não guardar stale promises longínquas
       setTimeout(() => {
         activeProfilePromise = null;
       }, 500);
@@ -74,10 +81,8 @@ export function useUser() {
 
   useEffect(() => {
     fetchProfile();
-    
-    // Escutar mudanças na autenticação (login/logout)
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      // Se houver alteração (signOut, signIn), invalidamos o cache e pegamos novo
       cachedProfile = null;
       activeProfilePromise = null;
       fetchProfile(true);
@@ -88,3 +93,4 @@ export function useUser() {
 
   return { user, loading, refreshUser: fetchProfile };
 }
+
