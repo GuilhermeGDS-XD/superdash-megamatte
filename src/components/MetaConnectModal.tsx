@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface MetaConnectModalProps {
   open: boolean;
@@ -21,6 +21,26 @@ export function MetaConnectModal({
 }: MetaConnectModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const popupRef = useRef<Window | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Ouve mensagem de sucesso do popup (postMessage)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'META_CONNECTED' && event.data?.success) {
+        console.log('✅ META_CONNECTED recebido! Recarregando...');
+        clearInterval(intervalRef.current!);
+        popupRef.current?.close();
+        setLoading(false);
+        onConnecting?.(false);
+        onClose();
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onClose, onConnecting]);
 
   const handleConnect = async () => {
     setLoading(true);
@@ -60,22 +80,20 @@ export function MetaConnectModal({
         return;
       }
 
+      popupRef.current = popup;
+
       console.log('👁️ Monitorando popup...');
-      // Monitora se o popup foi fechado
+      // Monitora se o popup foi fechado sem completar o fluxo
       const checkPopup = setInterval(() => {
         if (popup.closed) {
-          console.log('ℹ️ Popup fechado, aguardando sincronização...');
+          console.log('ℹ️ Popup fechado manualmente (sem META_CONNECTED)');
           clearInterval(checkPopup);
+          intervalRef.current = null;
           setLoading(false);
           onConnecting?.(false);
-
-          // Aguarda um pouco para o servidor processar
-          setTimeout(() => {
-            console.log('🔄 Recarregando página...');
-            window.location.reload();
-          }, 1500);
         }
       }, 500);
+      intervalRef.current = checkPopup;
     } catch (err) {
       console.error('❌ Erro ao abrir popup:', err);
       setError('Erro ao abrir popup de login');

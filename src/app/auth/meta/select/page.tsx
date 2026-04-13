@@ -102,13 +102,29 @@ export default function MetaSelectPage() {
         return;
       }
 
-      // Sucesso! Redireciona para dashboard
+      // Sucesso! Fecha o popup e notifica a janela pai
       const data = await response.json();
-      
-      // Aguarda um pouco para garantir que resposta foi processada
+      console.log('✅ Conta conectada com sucesso:', data);
+
+      // Tenta notificar a janela pai que abriu o popup
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: 'META_CONNECTED', success: true }, '*');
+        }
+      } catch (_) {
+        // Ignora erros de cross-origin
+      }
+
+      // Fecha o popup após pequeno delay (para a janela pai receber a mensagem)
       setTimeout(() => {
-        window.location.href = '/dashboard?meta_connected=true';
-      }, 500);
+        window.close();
+        // Se não fechou (popup bloqueado), redireciona manualmente
+        setTimeout(() => {
+          if (!window.closed) {
+            window.location.href = '/';
+          }
+        }, 500);
+      }, 300);
     } catch (err) {
       console.error('Error selecting account:', err);
       setError('Erro de conexão. Tente novamente.');
