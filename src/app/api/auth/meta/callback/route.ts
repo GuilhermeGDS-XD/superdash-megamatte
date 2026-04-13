@@ -129,7 +129,7 @@ function redirectToError(errorCode: string, message: string) {
     return NextResponse.redirect(
       new URL(
         `/dashboard?auth_error=${errorCode}&message=${encodeURIComponent(message)}`,
-        process.env.NEXT_PUBLIC_SITE_URL || 'https://buckskin-scoreless-barstool.ngrok-free.dev'
+        process.env.NEXT_PUBLIC_SITE_URL || 'https://painel.anclivepa-sp.org.br'
       )
     );
   } catch (e) {

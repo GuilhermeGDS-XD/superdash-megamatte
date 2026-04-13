@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     path: '/auth/meta/callback',
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://buckskin-scoreless-barstool.ngrok-free.dev';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://painel.anclivepa-sp.org.br';
 
   try {
     // 1. Verifica se usuário recusou a autorização
