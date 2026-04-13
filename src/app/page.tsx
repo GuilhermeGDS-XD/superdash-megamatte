@@ -371,12 +371,7 @@ export default function HomePage() {
     try {
       let baseQuery = supabase
         .from('campaigns')
-        .select(`
-          *,
-          users!campaigns_created_by_fkey (
-            full_name
-          )
-        `);
+        .select('*');
 
       if (debouncedSearch && debouncedSearch.length >= 3) {
         baseQuery = baseQuery.ilike('name', `%${debouncedSearch}%`);
@@ -930,7 +925,7 @@ export default function HomePage() {
                             <UserIcon size={12} strokeWidth={3} className="text-slate-500" />
                           </div>
                           <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[100px] leading-none">
-                            {campaign.users?.name || 'SISTEMA'}
+                            {users.find((u: any) => u.id === campaign.created_by)?.full_name || 'SISTEMA'}
                           </span>
                         </div>
                       </div>
