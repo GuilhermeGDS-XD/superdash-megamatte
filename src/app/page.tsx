@@ -141,7 +141,7 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showMetaModal, setShowMetaModal] = useState(false);
-  const { connected: metaConnected, loading: metaLoading } = useMetaConnection();
+  const { connected: metaConnected, anyAdminConnected, loading: metaLoading } = useMetaConnection();
   const [dashboardMetrics, setDashboardMetrics] = useState<any>({
     leads: 0,
     conversions: 0,
@@ -619,7 +619,7 @@ export default function HomePage() {
   return (
     <div className="space-y-6 sm:space-y-8 min-h-screen">
       {/* Banner: Meta não conectado */}
-      {!metaLoading && !metaConnected && (
+      {!metaLoading && !anyAdminConnected && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
