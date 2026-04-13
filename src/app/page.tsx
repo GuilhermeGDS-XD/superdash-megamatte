@@ -419,23 +419,6 @@ export default function HomePage() {
         setCampaigns(sorted);
         setCurrentPage(1);
         await fetchCreatives(sorted.map((campaign: any) => campaign.id));
-
-        // Validação assíncrona de status via Meta API (usa token OAuth do banco)
-        fetch('/api/campaigns/validate-status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ campaigns: sorted })
-        }).then(res => res.json()).then(resData => {
-          if (resData?.updatedStatuses && Object.keys(resData.updatedStatuses).length > 0) {
-            setCampaigns(prev => {
-              const mapped = prev.map(c => ({
-                ...c,
-                status: resData.updatedStatuses[c.id] || c.status
-              }));
-              return sortCampaigns(mapped);
-            });
-          }
-        }).catch(err => console.error('Erro na validação de status:', err));
       } else {
         setCampaigns([]);
         setCreatives([]);
