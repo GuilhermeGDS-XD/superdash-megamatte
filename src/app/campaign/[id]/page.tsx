@@ -45,6 +45,7 @@ import { TopCreatives } from '@/components/dashboard/TopCreatives';
 import { CampaignAnalysisCard } from '@/components/dashboard/CampaignAnalysisCard';
 import { EcompayMetricsCard } from '@/components/dashboard/EcompayMetricsCard';
 import { useEcompayMetrics } from '@/hooks/useEcompayMetrics';
+import { SpotterCommercialSummary } from '@/components/dashboard/SpotterCommercialSummary';
 import LoadingDashboard from './loading';
 
 type MetricKey = 'cost' | 'conversions' | 'clicks' | 'ctr' | 'cpc' | 'reach' | 'frequency' | 'cpm' | 'spend' | 'lead' | 'cost_per_lead';
@@ -910,6 +911,16 @@ export default function CampaignDashboard() {
       </div>
 
       </div> {/* fecha etapa 4 */}
+
+      {/* ETAPA 5 — RESUMO COMERCIAL (Spotter) */}
+      {campaign?.spotter_list_id && (
+        <SpotterCommercialSummary
+          originId={campaign.spotter_list_id}
+          period={actualPeriod}
+          campaignId={id as string}
+          campaignName={campaign?.name || ''}
+        />
+      )}
 
     </div>
   );

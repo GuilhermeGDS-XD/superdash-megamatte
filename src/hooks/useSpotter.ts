@@ -191,3 +191,49 @@ export function useSpotterOrigins() {
   return { origins, loading, error };
 }
 
+export function useSpotterByOrigin(originId: number | null | undefined, since?: string) {
+  const [data, setData] = useState<SpotterDashboardData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!originId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setData(null);
+
+    try {
+      const params = new URLSearchParams({ 
+        type: 'metrics',
+        originId: String(originId)
+      });
+      if (since) params.set('since', since);
+
+      const response = await fetch(`/api/spotter?${params}`);
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error ?? `Erro ${response.status}`);
+      }
+
+      const json = await response.json();
+      setData(json);
+      setLoading(false);
+    } catch (err: any) {
+      setError(err.message ?? 'Erro ao carregar dados do Spotter por origem');
+      setLoading(false);
+    }
+  }, [originId, since]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refresh: fetchData };
+}
+

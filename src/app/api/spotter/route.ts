@@ -65,8 +65,20 @@ export async function GET(request: NextRequest) {
 
     if (type === 'metrics') {
       const since = searchParams.get('since') ?? undefined;
+      const originId = searchParams.get('originId') ?? undefined;
+      
       // Monta filtro OData com DateTimeOffset (sem aspas, exigido pela API)
-      const odataFilter = since ? `registerDate ge ${since}T00:00:00Z` : undefined;
+      let odataFilter = since ? `registerDate ge ${since}T00:00:00Z` : undefined;
+      
+      // Se originId é fornecido, adiciona filtro de origem
+      if (originId) {
+        const originFilter = `source/id eq ${originId}`;
+        if (odataFilter) {
+          odataFilter = `${odataFilter} and ${originFilter}`;
+        } else {
+          odataFilter = originFilter;
+        }
+      }
 
       // Streaming SSE — envia progresso página a página e resultado final ao terminar
       const encoder = new TextEncoder();
