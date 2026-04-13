@@ -119,7 +119,7 @@ export function SpotterListSelect({ value, onChange, origins, loading }: Props) 
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-[1.5rem] border-2 border-slate-100 shadow-2xl shadow-slate-200/70 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 flex flex-col max-h-[360px]">
+        <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-[1.5rem] border-2 border-slate-100 shadow-2xl shadow-slate-200/70 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 flex flex-col max-h-[calc(100vh-200px)]">
           {/* Campo de busca */}
           <div className="p-4 shrink-0 border-b border-slate-50">
             <div className="relative">

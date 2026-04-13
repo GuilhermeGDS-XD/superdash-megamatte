@@ -141,7 +141,7 @@ export default function CreateCampaignPage() {
       </header>
 
       <div className="bg-white border border-slate-100 rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 lg:p-12 shadow-3xl shadow-slate-200/50 relative overflow-visible ring-1 ring-slate-50">
-        <form onSubmit={handleSubmit} className="space-y-8 sm:space-y-12 relative z-10">
+        <form onSubmit={handleSubmit} className="space-y-8 sm:space-y-12 relative z-10 pb-96">
           
           {/* Nome da Campanha */}
           <div className="space-y-4">
