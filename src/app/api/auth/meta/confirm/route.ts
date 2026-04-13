@@ -19,20 +19,10 @@ import { EncryptionService } from '@/services/encryptionService';
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. Parse do body
-    const body = await request.json();
-    const { account_id } = body;
-
-    if (!account_id) {
-      return NextResponse.json(
-        { error: 'account_id é obrigatório' },
-        { status: 400 }
-      );
-    }
-
     // 2. Resgata dados da sessão temporária do cookie
     const sessionCookie = request.cookies.get('meta_oauth_session')?.value;
     if (!sessionCookie) {
+      console.error('No session cookie found');
       return NextResponse.json(
         { error: 'Sessão expirou. Tente novamente.' },
         { status: 401 }
@@ -43,6 +33,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Valida se a sessão não expirou
     if (sessionData.expires_at < Date.now()) {
+      console.error('Session expired');
       return NextResponse.json(
         { error: 'Sessão expirada' },
         { status: 401 }
@@ -55,6 +46,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!selectedAccount) {
+      console.error('Account not found in session');
       return NextResponse.json(
         { error: 'Conta não encontrada' },
         { status: 404 }
@@ -67,17 +59,7 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 6. Pega user autenticado (assumindo que já passou por auth)
-    // TODO: Implementar autenticação adequada
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Não autenticado' },
-        { status: 401 }
-      );
-    }
-
-    // 7. Criptografa o access_token antes de salvar
+    // 6. Criptografa o access_token antes de salvar
     let encryptedToken: string;
     try {
       encryptedToken = EncryptionService.encrypt(sessionData.access_token);
@@ -89,12 +71,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 8. Salva em meta_accounts
-    // Para agora, vamos usar um user_id placeholder
-    // TODO: Substituir por user_id real da autenticação
-    const userId = 'placeholder-user-id'; // Será substituído com user real
+    // 7. IMPORTANTE: Verificar se usuário está autenticado
+    // Por enquanto, vamos usar um placeholder e avisar no console
+    // TODO: Implementar autenticação adequada
+    const userId = 'demo-user-1'; // Placeholder - será melhorado
+    console.warn('⚠️  USANDO PLACEHOLDER DE USER - IMPLEMENTAR AUTENTICAÇÃO REAL');
 
-    const { error: upsertError } = await supabase
+    // 8. Salva em meta_accounts
+    const { error: upsertError, data: savedAccount } = await supabase
       .from('meta_accounts')
       .upsert(
         {
@@ -111,7 +95,8 @@ export async function POST(request: NextRequest) {
         {
           onConflict: 'user_id,account_id',
         }
-      );
+      )
+      .select();
 
     if (upsertError) {
       console.error('Failed to save meta account:', upsertError);
@@ -121,7 +106,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 9. Limap dados temporários
+    console.log('✅ Meta account saved:', savedAccount);
+
+    // 9. Retorna sucesso
     const response = NextResponse.json(
       {
         success: true,

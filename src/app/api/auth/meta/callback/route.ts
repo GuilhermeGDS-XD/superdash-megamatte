@@ -57,21 +57,10 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 5. Pega user_id da sessão autenticada
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.admin.getUserById(
-      request.cookies.get('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0] + '-auth-token')?.value || ''
-    );
-
-    // Alternativa: usar client-side user (passa como query param ou sessão)
-    // Por enquanto, vamos usar uma abordagem mais segura
-    
-    // 6. Troca authorization_code por access_token
+    // 5. Troca authorization_code por access_token
     const { access_token } = await MetaOAuthService.exchangeCodeForToken(code);
 
-    // 7. Busca contas Meta do usuário
+    // 6. Busca contas Meta do usuário
     const accounts = await MetaOAuthService.getUserAdAccounts(access_token);
 
     if (!accounts || accounts.length === 0) {
@@ -81,16 +70,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 8. Armazena dados temporários
-    // Usando cookie seguro para armazenar a sessão temporária
-    // (Alternativa: salvar em meta_sessions no Supabase)
-    
+    // 7. Armazena dados temporários em cookie
     const sessionData = {
       access_token,
       accounts,
       created_at: Date.now(),
       expires_at: Date.now() + 10 * 60 * 1000, // 10 minutos
     };
+
+    console.log('OAuth callback sucesso - redirecionando para /auth/meta/select');
 
     const response = NextResponse.redirect(
       new URL('/auth/meta/select', request.url)

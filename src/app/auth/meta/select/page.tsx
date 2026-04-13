@@ -26,26 +26,28 @@ export default function MetaSelectPage() {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        // Resgata dados da sessão do cookie (enviado pelo servidor)
-        // Para agora, vamos simular lendo dados do localStorage
-        // TODO: Implementar com servidor
+        // Os dados já estão no cookie 'meta_oauth_session'
+        // O servidor vai passar pra gente via página renderizada
+        // Mas como é cookie httpOnly, precisamos de um endpoint pra ler
         
-        // Verifica se chegou aqui do callback
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('error')) {
-          setError(`Erro: ${params.get('error_description') || params.get('error')}`);
+        // Chamamos um endpoint que lê o cookie e retorna os dados
+        const response = await fetch('/api/auth/meta/session', {
+          method: 'GET',
+          credentials: 'include', // Importante pra enviar cookies
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          setError(error.error || 'Erro ao carregar contas');
           setLoading(false);
           return;
         }
 
-        // Simula fetch de dados (será implementado com servidor)
-        // Por enquanto, vamos usar dados do sessionStorage
-        const sessionData = sessionStorage.getItem('meta_oauth_session');
-        if (sessionData) {
-          const data = JSON.parse(sessionData);
-          setAccounts(data.accounts || []);
+        const data = await response.json();
+        if (data.accounts) {
+          setAccounts(data.accounts);
         } else {
-          setError('Dados de sessão não encontrados. Tente novamente.');
+          setError('Nenhuma conta encontrada na sessão');
         }
 
         setLoading(false);
@@ -82,9 +84,6 @@ export default function MetaSelectPage() {
       // Sucesso! Redireciona para dashboard
       const data = await response.json();
       
-      // Limpa dados temporários
-      sessionStorage.removeItem('meta_oauth_session');
-
       // Aguarda um pouco para garantir que resposta foi processada
       setTimeout(() => {
         window.location.href = '/dashboard?meta_connected=true';
