@@ -20,8 +20,27 @@ export default function MetaSelectPage() {
   const router = useRouter();
   const [accounts, setAccounts] = useState<MetaAccount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selecting, setSelecting] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState<string[]>([]);
+
+  const toggleAccount = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === accounts.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(accounts.map(a => a.account_id)));
+    }
+  };
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -59,54 +78,56 @@ export default function MetaSelectPage() {
     fetchSession();
   }, []);
 
-  const handleSelectAccount = async (accountId: string) => {
-    setSelecting(accountId);
+  const handleConfirm = async () => {
+    if (selected.size === 0) return;
+    setSubmitting(true);
     setError(null);
 
-    try {
-      const response = await fetch('/api/auth/meta/confirm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ account_id: accountId }),
-      });
+    const accountIds = Array.from(selected);
+    const results: string[] = [];
+    const errors: string[] = [];
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        setError(errorData.error || 'Erro ao conectar conta');
-        setSelecting(null);
-        return;
-      }
-
-      // Sucesso! Fecha o popup e notifica a janela pai
-      const data = await response.json();
-      console.log('✅ Conta conectada com sucesso:', data);
-
-      // Tenta notificar a janela pai que abriu o popup
+    for (const accountId of accountIds) {
       try {
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({ type: 'META_CONNECTED', success: true }, '*');
-        }
-      } catch (_) {
-        // Ignora erros de cross-origin
-      }
+        const response = await fetch('/api/auth/meta/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account_id: accountId }),
+        });
 
-      // Fecha o popup após pequeno delay (para a janela pai receber a mensagem)
-      setTimeout(() => {
-        window.close();
-        // Se não fechou (popup bloqueado), redireciona manualmente
-        setTimeout(() => {
-          if (!window.closed) {
-            window.location.href = '/';
-          }
-        }, 500);
-      }, 300);
-    } catch (err) {
-      console.error('Error selecting account:', err);
-      setError('Erro de conexão. Tente novamente.');
-      setSelecting(null);
+        const data = await response.json();
+
+        if (!response.ok) {
+          errors.push(`${accountId}: ${data.error || 'Erro desconhecido'}`);
+        } else {
+          results.push(accountId);
+          setConnected(prev => [...prev, accountId]);
+        }
+      } catch (err) {
+        errors.push(`${accountId}: Erro de conexão`);
+      }
     }
+
+    setSubmitting(false);
+
+    if (errors.length > 0 && results.length === 0) {
+      setError('Falha ao conectar: ' + errors.join(', '));
+      return;
+    }
+
+    // Ao menos uma conta conectada com sucesso
+    console.log('✅ Contas conectadas:', results);
+
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'META_CONNECTED', success: true, count: results.length }, '*');
+      }
+    } catch (_) {}
+
+    setTimeout(() => {
+      window.close();
+      setTimeout(() => { if (!window.closed) window.location.href = '/'; }, 500);
+    }, 800);
   };
 
   if (loading) {
@@ -163,55 +184,118 @@ export default function MetaSelectPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="text-4xl mb-2">📊</div>
-          <h1 className="text-2xl font-bold text-gray-800">Qual conta Meta conectar?</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Contas Meta disponíveis</h1>
           <p className="text-gray-600 text-sm mt-2">
-            Selecione uma conta para sincronizar campanhas
+            Selecione uma ou mais contas para sincronizar campanhas
           </p>
         </div>
 
+        {/* Selecionar todos */}
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-sm text-gray-500">{accounts.length} contas encontradas</span>
+          <button
+            onClick={toggleAll}
+            disabled={submitting}
+            className="text-sm text-blue-600 hover:underline disabled:opacity-50"
+          >
+            {selected.size === accounts.length ? 'Desmarcar todas' : 'Selecionar todas'}
+          </button>
+        </div>
+
         {/* Accounts List */}
-        <div className="space-y-3 mb-6">
-          {accounts.map((account) => (
-            <button
-              key={account.account_id}
-              onClick={() => handleSelectAccount(account.account_id)}
-              disabled={selecting !== null}
-              className={`
-                w-full px-4 py-3 border rounded-lg transition-all
-                flex items-center justify-between font-medium
-                ${
-                  selecting === account.account_id
-                    ? 'bg-blue-50 border-blue-500 text-blue-700'
-                    : selecting !== null
-                    ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-white border-gray-300 text-gray-800 hover:border-blue-500 hover:bg-blue-50 cursor-pointer'
-                }
-              `}
-            >
-              <div>
-                <div className="text-left">{account.account_name}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {account.account_id} · {account.currency}
+        <div className="space-y-2 mb-6 max-h-72 overflow-y-auto pr-1">
+          {accounts.map((account) => {
+            const isSelected = selected.has(account.account_id);
+            const isConnected = connected.includes(account.account_id);
+            return (
+              <button
+                key={account.account_id}
+                onClick={() => !isConnected && toggleAccount(account.account_id)}
+                disabled={submitting || isConnected}
+                className={`
+                  w-full px-4 py-3 border rounded-lg transition-all
+                  flex items-center gap-3 text-left
+                  ${
+                    isConnected
+                      ? 'bg-green-50 border-green-400 cursor-default'
+                      : isSelected
+                      ? 'bg-blue-50 border-blue-500'
+                      : submitting
+                      ? 'bg-gray-50 border-gray-200 cursor-not-allowed opacity-60'
+                      : 'bg-white border-gray-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer'
+                  }
+                `}
+              >
+                {/* Checkbox visual */}
+                <div className={`
+                  w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
+                  ${
+                    isConnected
+                      ? 'bg-green-500 border-green-500'
+                      : isSelected
+                      ? 'bg-blue-600 border-blue-600'
+                      : 'border-gray-300'
+                  }
+                `}>
+                  {(isSelected || isConnected) && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
                 </div>
-              </div>
 
-              {selecting === account.account_id && (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-              )}
+                <div className="flex-1 min-w-0">
+                  <div className={`font-medium truncate ${
+                    isConnected ? 'text-green-700' : isSelected ? 'text-blue-700' : 'text-gray-800'
+                  }`}>
+                    {account.account_name}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {account.account_id} · {account.currency}
+                  </div>
+                </div>
 
-              {selecting !== account.account_id && selecting === null && (
-                <div className="text-gray-400">→</div>
-              )}
-            </button>
-          ))}
+                {isConnected && (
+                  <span className="text-xs text-green-600 font-medium flex-shrink-0">✓ Conectada</span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Footer */}
-        <div className="text-center text-xs text-gray-500 pt-4 border-t">
-          <p>Você será redirecionado após selecionar uma conta</p>
-        </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {/* Botão confirmar */}
+        <button
+          onClick={handleConfirm}
+          disabled={selected.size === 0 || submitting}
+          className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium transition
+            hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed
+            flex items-center justify-center gap-2"
+        >
+          {submitting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              Conectando {connected.length + 1} de {selected.size}...
+            </>
+          ) : (
+            `Conectar ${
+              selected.size === 0 ? '' :
+              selected.size === 1 ? '1 conta' :
+              `${selected.size} contas`
+            }`
+          )}
+        </button>
+
+        <p className="text-center text-xs text-gray-400 mt-3">
+          O popup fechará automaticamente ao concluir
+        </p>
       </div>
     </div>
   );
