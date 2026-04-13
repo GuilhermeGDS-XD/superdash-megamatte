@@ -110,6 +110,9 @@ export default function MetaSelectPage() {
 
     setSubmitting(false);
 
+    // Limpa a sessão temporária após processar todas as contas
+    await fetch('/api/auth/meta/cleanup', { method: 'DELETE', credentials: 'include' });
+
     if (errors.length > 0 && results.length === 0) {
       setError('Falha ao conectar: ' + errors.join(', '));
       return;

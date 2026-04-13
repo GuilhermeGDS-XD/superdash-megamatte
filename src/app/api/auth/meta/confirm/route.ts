@@ -153,13 +153,12 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Meta account salvo:', savedAccount);
 
-    // 9. Limpa a sessão temporária do Supabase
-    await supabase.from('meta_sessions').delete().eq('id', sessionId);
-    console.log('🧹 Sessão temporária removida');
+    // 9. NÃO deleta a sessão aqui — o frontend pode chamar confirm múltiplas vezes
+    //    A sessão é deletada pelo endpoint /cleanup após todas as contas serem salvas
 
     // 10. Retorna sucesso
     console.log('✅ [CONFIRM] Sucesso!');
-    const response = NextResponse.json(
+    return NextResponse.json(
       {
         success: true,
         message: 'Conta Meta conectada com sucesso',
@@ -170,11 +169,6 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-
-    // Remove cookie de sessão
-    response.cookies.delete('meta_session_id');
-
-    return response;
   } catch (error) {
     console.error('❌ [CONFIRM] Erro:', error);
 
