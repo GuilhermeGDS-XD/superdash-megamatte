@@ -1,25 +1,52 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase'; // Usar root admin para gravar as campanhas
+import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase';
+import { EncryptionService } from '@/services/encryptionService';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { account_id, account_name } = body;
-    const apiToken = process.env.META_ADS_ACCESS_TOKEN;
 
     if (!account_id) {
       return NextResponse.json({ error: 'account_id é obrigatório' }, { status: 400 });
     }
 
-    if (!apiToken) {
-      return NextResponse.json({ error: 'META_ADS_ACCESS_TOKEN não configurado' }, { status: 400 });
+    // Busca o token da conta no banco (OAuth) — não usa mais .env
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const normalizedAccountId = account_id.startsWith('act_') ? account_id.replace('act_', '') : account_id;
+
+    const { data: metaAccount, error: tokenError } = await supabase
+      .from('meta_accounts')
+      .select('access_token, account_name')
+      .eq('account_id', normalizedAccountId)
+      .single();
+
+    if (tokenError || !metaAccount) {
+      return NextResponse.json(
+        { error: `Conta ${account_id} não encontrada. Reconecte o Meta.` },
+        { status: 404 }
+      );
     }
 
-    const normalizedAccountId = account_id.startsWith('act_') ? account_id : `act_${account_id}`;
-    const baseUrl = `https://graph.facebook.com/v19.0/${normalizedAccountId}/campaigns`;
+    let apiToken: string;
+    try {
+      apiToken = EncryptionService.decrypt(metaAccount.access_token);
+    } catch {
+      return NextResponse.json({ error: 'Token inválido. Reconecte a conta Meta.' }, { status: 401 });
+    }
+
+    const resolvedAccountName = account_name || metaAccount.account_name;
+    const actAccountId = `act_${normalizedAccountId}`;
+    const baseUrl = `https://graph.facebook.com/v19.0/${actAccountId}/campaigns`;
 
     const campaigns: any[] = [];
     let nextPageUrl: string | null = `${baseUrl}?fields=id,name,status,created_time,effective_status&access_token=${apiToken}&limit=500`;
+    console.log(`🔄 Sincronizando campanhas da conta ${actAccountId}...`);
 
     while (nextPageUrl) {
       const metaResponse: any = await fetch(nextPageUrl as string);
@@ -69,11 +96,11 @@ export async function POST(request: Request) {
           meta_campaign_id: campaign.id,
           name: campaign.name,
           status: campaign.effective_status === 'ACTIVE' ? 'Ativa' : 'Pausada',
-          meta_account_id: normalizedAccountId,
+          meta_account_id: actAccountId,
         };
 
         if (hasMetaAccountName) {
-          payload.meta_account_name = account_name || null;
+          payload.meta_account_name = resolvedAccountName || null;
         }
 
         if (hasUpdatedAt) {
