@@ -373,7 +373,7 @@ export default function HomePage() {
         .from('campaigns')
         .select(`
           *,
-          users (
+          users!campaigns_created_by_fkey (
             full_name
           )
         `);
