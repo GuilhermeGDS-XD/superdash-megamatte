@@ -51,8 +51,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === 'origins') {
-      const origins = await getOrigins();
-      return NextResponse.json({ origins });
+      try {
+        const origins = await getOrigins();
+        return NextResponse.json({ origins, count: origins.length });
+      } catch (err: any) {
+        console.error('Erro ao buscar origens:', err.message);
+        return NextResponse.json(
+          { origins: [], error: err.message, count: 0 },
+          { status: 200 } // Retorna 200 mesmo com erro para não quebrar o frontend
+        );
+      }
     }
 
     if (type === 'metrics') {

@@ -104,39 +104,37 @@ export async function getFunnels(): Promise<SpotterFunnel[]> {
   return Array.isArray(data) ? data : data?.value ?? [];
 }
 
-// Busca todas as origens dos leads (agregação)
+// Busca todas as origens disponíveis diretamente da API Spotter
 export async function getOrigins(): Promise<SpotterOrigin[]> {
-  // Busca os leads com paginação
-  const PAGE = 500;
-  const allLeads: SpotterLead[] = [];
-  let skip = 0;
+  // Tenta diferentes endpoints possíveis
+  const endpoints = [
+    `${BASE_URL}/Origins`,
+    `${BASE_URL}/Sources`, 
+    `${BASE_URL}/LeadSources`,
+  ];
 
-  while (true) {
-    const page = await getLeads({ top: PAGE, skip });
-    allLeads.push(...page);
-    skip += PAGE;
-    const hasMore = page.length === PAGE;
-    if (!hasMore) break;
-  }
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetchWithTimeout(endpoint, {
+        headers: getHeaders(),
+      });
 
-  // Extrai as origens únicas dos leads
-  const originsMap = new Map<string, number>();
-  for (const lead of allLeads) {
-    if (lead.source?.value) {
-      const id = lead.source.id;
-      const value = lead.source.value;
-      // Usa um Map para manter ID e value
-      originsMap.set(`${id}|${value}`, id);
+      if (response.ok) {
+        const data = await response.json();
+        const origins = Array.isArray(data) ? data : data?.value ?? [];
+        
+        if (origins.length > 0) {
+          return origins;
+        }
+      }
+    } catch (err) {
+      // Continua tentando próximo endpoint
     }
   }
 
-  // Converte para array de SpotterOrigin
-  const origins: SpotterOrigin[] = Array.from(originsMap.entries()).map(([key, id]) => {
-    const [, value] = key.split('|');
-    return { id, value, active: true };
-  });
-
-  return origins;
+  // Se nenhum endpoint funcionou, retorna array vazio
+  console.warn('⚠️ Nenhum endpoint de origens funcionou. Retornando lista vazia.');
+  return [];
 }
 
 // Lista leads com suporte a filtros OData

@@ -161,14 +161,25 @@ export function useSpotterOrigins() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
 
     fetch('/api/spotter?type=origins')
       .then((r) => r.json())
       .then((json) => {
-        if (!cancelled) setOrigins(json.origins ?? []);
+        if (!cancelled) {
+          setOrigins(json.origins ?? []);
+          if (json.error) {
+            console.warn('⚠️ Aviso ao carregar origens:', json.error);
+            setError(json.error);
+          }
+        }
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message ?? 'Erro ao carregar origens');
+        if (!cancelled) {
+          const msg = err.message ?? 'Erro ao carregar origens';
+          console.error('❌ Erro:', msg);
+          setError(msg);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
