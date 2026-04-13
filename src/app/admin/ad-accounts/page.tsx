@@ -34,6 +34,7 @@ export default function AdAccountsPage() {
   const [error, setError] = useState<string | null>(null);
   const [syncingMap, setSyncingMap] = useState<Record<string, boolean>>({});
   const [resultsMap, setResultsMap] = useState<Record<string, { success: boolean, message: string }>>({});
+  const [syncingAll, setSyncingAll] = useState(false);
 
   useEffect(() => {
     if (!userLoading && (!profile || !isSuperAdmin(profile.role))) {
@@ -115,6 +116,54 @@ export default function AdAccountsPage() {
     }
   };
 
+  const syncAllAccounts = async () => {
+    const activeAccounts = accounts.filter(a => a.account_status === 1);
+    if (activeAccounts.length === 0) return;
+
+    setSyncingAll(true);
+    setResultsMap({});
+
+    for (const account of activeAccounts) {
+      setSyncingMap(prev => ({ ...prev, [account.account_id]: true }));
+    }
+
+    const promises = activeAccounts.map(async (account) => {
+      try {
+        const response = await fetch('/api/meta/campaigns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            account_id: account.account_id,
+            account_name: account.name
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Erro de Sincronização');
+
+        setResultsMap(prev => ({
+          ...prev,
+          [account.account_id]: {
+            success: true,
+            message: `${data.synced}/${data.campaignsFound} campanhas sincronizadas (${data.failed} falhas).`
+          }
+        }));
+      } catch (err: any) {
+        setResultsMap(prev => ({
+          ...prev,
+          [account.account_id]: {
+            success: false,
+            message: err.message
+          }
+        }));
+      } finally {
+        setSyncingMap(prev => ({ ...prev, [account.account_id]: false }));
+      }
+    });
+
+    await Promise.allSettled(promises);
+    setSyncingAll(false);
+  };
+
   if (userLoading) return null;
 
   return (
@@ -135,14 +184,24 @@ export default function AdAccountsPage() {
           </div>
         </div>
 
-        <button 
-          onClick={loadAccounts}
-          disabled={loading || activeTab === 'google'}
-          className="flex items-center gap-3 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50"
-        >
-          <RefreshCw size={16} className={cn(loading && "animate-spin")} />
-          Recarregar
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={syncAllAccounts}
+            disabled={loading || syncingAll || activeTab === 'google' || accounts.length === 0}
+            className="flex items-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50"
+          >
+            {syncingAll ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            {syncingAll ? 'Sincronizando...' : 'Sincronizar Todas'}
+          </button>
+          <button 
+            onClick={loadAccounts}
+            disabled={loading || activeTab === 'google'}
+            className="flex items-center gap-3 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={cn(loading && "animate-spin")} />
+            Recarregar
+          </button>
+        </div>
       </header>
 
       {/* Tabs */}
