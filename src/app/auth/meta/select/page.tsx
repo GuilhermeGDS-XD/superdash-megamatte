@@ -25,56 +25,33 @@ export default function MetaSelectPage() {
 
   useEffect(() => {
     const fetchSession = async () => {
+      console.log('🔍 [SELECT] Buscando sessão OAuth...');
       try {
-        // Tenta ler do cookie primeiro
-        const cookies = document.cookie.split(';');
-        let sessionData = null;
+        const response = await fetch('/api/auth/meta/session', {
+          method: 'GET',
+          credentials: 'include',
+        });
 
-        for (const cookie of cookies) {
-          const [name, value] = cookie.trim().split('=');
-          if (name === 'meta_oauth_session') {
-            try {
-              sessionData = JSON.parse(decodeURIComponent(value));
-              console.log('✅ Session encontrada no cookie');
-              break;
-            } catch (e) {
-              console.warn('Cookie exists but invalid JSON:', e);
-            }
-          }
+        const data = await response.json();
+        console.log('📦 [SELECT] Resposta do endpoint:', { ok: response.ok, data });
+
+        if (!response.ok) {
+          setError(data.error || 'Erro ao carregar contas. Tente novamente.');
+          setLoading(false);
+          return;
         }
 
-        if (!sessionData) {
-          console.log('❌ Session não encontrada, tentando endpoint...');
-          // Tenta endpoint como fallback
-          const response = await fetch('/api/auth/meta/session', {
-            method: 'GET',
-            credentials: 'include',
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            setError(error.error || error.message || 'Erro ao carregar contas');
-            console.error('Endpoint error:', error);
-            setLoading(false);
-            return;
-          }
-
-          const data = await response.json();
-          sessionData = data;
-        }
-
-        if (sessionData?.accounts) {
-          setAccounts(sessionData.accounts);
-          console.log('✅ Contas carregadas:', sessionData.accounts.length);
+        if (data.accounts && data.accounts.length > 0) {
+          setAccounts(data.accounts);
+          console.log('✅ [SELECT] Contas carregadas:', data.accounts.length);
         } else {
-          setError('Nenhuma conta encontrada');
-          console.warn('No accounts in session');
+          setError('Nenhuma conta Meta encontrada.');
         }
 
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching session:', err);
-        setError('Erro ao carregar contas: ' + (err instanceof Error ? err.message : 'Unknown'));
+        console.error('❌ [SELECT] Erro ao buscar sessão:', err);
+        setError('Erro de conexão. Tente novamente.');
         setLoading(false);
       }
     };

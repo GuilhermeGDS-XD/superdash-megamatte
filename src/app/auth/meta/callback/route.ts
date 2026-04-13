@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { MetaOAuthService } from '@/services/metaOAuthService';
 
 /**
@@ -73,21 +74,40 @@ export async function GET(request: NextRequest) {
       return redirectToError('no_accounts', 'User has no Meta ad accounts', baseUrl);
     }
 
-    // 6. Armazena dados temporários em cookie
-    const sessionData = {
-      access_token,
-      accounts,
-      created_at: Date.now(),
-      expires_at: Date.now() + 10 * 60 * 1000, // 10 minutos
-    };
+    // 6. Armazena sessão no Supabase (evita limite de ~4KB do cookie)
+    console.log('💾 Salvando sessão temporária no Supabase...');
 
-    console.log('💾 Salvando sessão temporária e redirecionando para /auth/meta/select...');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
+
+    const { data: session, error: sessionError } = await supabase
+      .from('meta_sessions')
+      .insert({
+        access_token,
+        accounts,
+        state,
+        expires_at: expiresAt,
+      })
+      .select('id')
+      .single();
+
+    if (sessionError || !session) {
+      console.error('❌ Falha ao salvar sessão no Supabase:', sessionError);
+      return redirectToError('session_save_failed', sessionError?.message || 'Failed to save session', baseUrl);
+    }
+
+    console.log('✅ Sessão salva. ID:', session.id);
 
     const response = NextResponse.redirect(new URL('/auth/meta/select', baseUrl));
 
-    response.cookies.set('meta_oauth_session', JSON.stringify(sessionData), {
+    // Salva apenas o ID da sessão no cookie (pequeno, sem limite de tamanho)
+    response.cookies.set('meta_session_id', session.id, {
       maxAge: 600,
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',

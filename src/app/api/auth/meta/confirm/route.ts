@@ -18,10 +18,7 @@ import { EncryptionService } from '@/services/encryptionService';
  * 7. Retorna sucesso
  */
 export async function POST(request: NextRequest) {
-  console.log('📤 [CONFIRM] Iniciando...', {
-    method: request.method,
-    url: request.url,
-  });
+  console.log('📤 [CONFIRM] Iniciando...');
 
   try {
     // 1. Faz parse do body
@@ -30,74 +27,61 @@ export async function POST(request: NextRequest) {
 
     if (!account_id) {
       console.error('❌ account_id não fornecido');
-      return NextResponse.json(
-        { error: 'account_id obrigatório' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'account_id obrigatório' }, { status: 400 });
     }
 
     console.log('✅ Body parseado:', { account_id });
 
-    // 2. Resgata dados da sessão temporária do cookie
-    const sessionCookie = request.cookies.get('meta_oauth_session')?.value;
-    if (!sessionCookie) {
-      console.error('❌ Cookie de sessão não encontrado');
+    // 2. Lê session_id do cookie (httpOnly, pequeno)
+    const sessionId = request.cookies.get('meta_session_id')?.value;
+    if (!sessionId) {
+      console.error('❌ Cookie meta_session_id não encontrado');
       return NextResponse.json(
         { error: 'Sessão expirou. Tente novamente.' },
         { status: 401 }
       );
     }
 
-    console.log('✅ Cookie encontrado');
+    // 3. Busca sessão no Supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-    let sessionData;
-    try {
-      sessionData = JSON.parse(sessionCookie);
-    } catch (e) {
-      console.error('❌ Erro ao fazer parse do cookie:', e);
-      return NextResponse.json(
-        { error: 'Dados de sessão inválidos' },
-        { status: 400 }
-      );
-    }
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('meta_sessions')
+      .select('id, access_token, accounts, expires_at')
+      .eq('id', sessionId)
+      .single();
 
-    // 3. Valida se a sessão não expirou
-    if (sessionData.expires_at < Date.now()) {
-      console.error('❌ Sessão expirada:', {
-        expiresAt: new Date(sessionData.expires_at),
-        now: new Date(),
-      });
+    if (sessionError || !sessionData) {
+      console.error('❌ Sessão não encontrada no Supabase:', sessionError?.message);
       return NextResponse.json(
-        { error: 'Sessão expirada' },
+        { error: 'Sessão não encontrada. Tente novamente.' },
         { status: 401 }
       );
     }
 
+    // 4. Valida expiração
+    if (new Date(sessionData.expires_at) < new Date()) {
+      console.error('❌ Sessão expirada');
+      await supabase.from('meta_sessions').delete().eq('id', sessionId);
+      return NextResponse.json({ error: 'Sessão expirada' }, { status: 401 });
+    }
+
     console.log('✅ Sessão válida. Contas disponíveis:', sessionData.accounts?.length);
 
-    // 4. Encontra a conta selecionada
+    // 5. Encontra a conta selecionada
     const selectedAccount = sessionData.accounts.find(
       (acc: any) => acc.account_id === account_id
     );
 
     if (!selectedAccount) {
-      console.error('❌ Conta não encontrada:', {
-        searchedId: account_id,
-        availableAccounts: sessionData.accounts?.map((a: any) => a.account_id),
-      });
-      return NextResponse.json(
-        { error: 'Conta não encontrada' },
-        { status: 404 }
-      );
+      console.error('❌ Conta não encontrada:', account_id);
+      return NextResponse.json({ error: 'Conta não encontrada' }, { status: 404 });
     }
 
-    console.log('✅ Conta selecionada encontrada:', selectedAccount.account_name);
-
-    // 5. Inicializa Supabase
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    console.log('✅ Conta selecionada:', selectedAccount.account_name);
 
     // 6. Criptografa o access_token antes de salvar
     let encryptedToken: string;
@@ -112,10 +96,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7. IMPORTANTE: Verificar se usuário está autenticado
-    // Por enquanto, vamos usar um placeholder e avisar no console
-    // TODO: Implementar autenticação adequada
-    const userId = 'demo-user-1'; // Placeholder - será melhorado
+    // 7. TODO: Implementar autenticação real
+    const userId = 'demo-user-1';
     console.warn('⚠️  USANDO PLACEHOLDER DE USER - IMPLEMENTAR AUTENTICAÇÃO REAL');
 
     // 8. Salva em meta_accounts
@@ -128,15 +110,11 @@ export async function POST(request: NextRequest) {
           account_id: selectedAccount.account_id,
           account_name: selectedAccount.account_name,
           access_token: encryptedToken,
-          token_expires_at: new Date(
-            Date.now() + 60 * 24 * 60 * 60 * 1000 // 60 dias
-          ).toISOString(),
+          token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
           status: 'active',
           updated_at: new Date().toISOString(),
         },
-        {
-          onConflict: 'user_id,account_id',
-        }
+        { onConflict: 'user_id,account_id' }
       )
       .select();
 
@@ -148,10 +126,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Meta account salvo com sucesso:', savedAccount);
+    console.log('✅ Meta account salvo:', savedAccount);
 
-    // 9. Retorna sucesso
-    console.log('✅ [CONFIRM] Sucesso! Retornando resposta...');
+    // 9. Limpa a sessão temporária do Supabase
+    await supabase.from('meta_sessions').delete().eq('id', sessionId);
+    console.log('🧹 Sessão temporária removida');
+
+    // 10. Retorna sucesso
+    console.log('✅ [CONFIRM] Sucesso!');
     const response = NextResponse.json(
       {
         success: true,
@@ -164,52 +146,12 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
 
-    // Remove o cookie de sessão
-    response.cookies.delete('meta_oauth_session');
+    // Remove cookie de sessão
+    response.cookies.delete('meta_session_id');
 
     return response;
   } catch (error) {
     console.error('❌ [CONFIRM] Erro:', error);
-
-    return NextResponse.json(
-      {
-        error: 'Erro ao confirmar conexão',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
-
-    if (upsertError) {
-      console.error('Failed to save meta account:', upsertError);
-      return NextResponse.json(
-        { error: 'Falha ao salvar conta Meta' },
-        { status: 500 }
-      );
-    }
-
-    console.log('✅ Meta account saved:', savedAccount);
-
-    // 9. Retorna sucesso
-    const response = NextResponse.json(
-      {
-        success: true,
-        message: 'Conta Meta conectada com sucesso',
-        account: {
-          id: selectedAccount.account_id,
-          name: selectedAccount.account_name,
-        },
-      },
-      { status: 200 }
-    );
-
-    // Remove o cookie de sessão
-    response.cookies.delete('meta_oauth_session');
-
-    return response;
-  } catch (error) {
-    console.error('OAuth confirm error:', error);
 
     return NextResponse.json(
       {
