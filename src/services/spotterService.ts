@@ -104,18 +104,39 @@ export async function getFunnels(): Promise<SpotterFunnel[]> {
   return Array.isArray(data) ? data : data?.value ?? [];
 }
 
-// Busca todas as origens disponíveis
+// Busca todas as origens dos leads (agregação)
 export async function getOrigins(): Promise<SpotterOrigin[]> {
-  const response = await fetchWithTimeout(`${BASE_URL}/Origins`, {
-    headers: getHeaders(),
-  });
+  // Busca os leads com paginação
+  const PAGE = 500;
+  const allLeads: SpotterLead[] = [];
+  let skip = 0;
 
-  if (!response.ok) {
-    throw new Error(`Erro ao buscar origens: ${response.status}`);
+  while (true) {
+    const page = await getLeads({ top: PAGE, skip });
+    allLeads.push(...page);
+    skip += PAGE;
+    const hasMore = page.length === PAGE;
+    if (!hasMore) break;
   }
 
-  const data = await response.json();
-  return Array.isArray(data) ? data : data?.value ?? [];
+  // Extrai as origens únicas dos leads
+  const originsMap = new Map<string, number>();
+  for (const lead of allLeads) {
+    if (lead.source?.value) {
+      const id = lead.source.id;
+      const value = lead.source.value;
+      // Usa um Map para manter ID e value
+      originsMap.set(`${id}|${value}`, id);
+    }
+  }
+
+  // Converte para array de SpotterOrigin
+  const origins: SpotterOrigin[] = Array.from(originsMap.entries()).map(([key, id]) => {
+    const [, value] = key.split('|');
+    return { id, value, active: true };
+  });
+
+  return origins;
 }
 
 // Lista leads com suporte a filtros OData
