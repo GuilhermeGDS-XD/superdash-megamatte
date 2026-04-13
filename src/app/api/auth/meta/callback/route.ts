@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     // Salva dados da sessão em cookie seguro
     response.cookies.set('meta_oauth_session', JSON.stringify(sessionData), {
       maxAge: 600, // 10 minutos
-      httpOnly: true,
+      httpOnly: false, // Deixar acessível ao JS pra poder usar sessionStorage
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',

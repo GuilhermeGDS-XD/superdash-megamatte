@@ -26,34 +26,55 @@ export default function MetaSelectPage() {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        // Os dados já estão no cookie 'meta_oauth_session'
-        // O servidor vai passar pra gente via página renderizada
-        // Mas como é cookie httpOnly, precisamos de um endpoint pra ler
-        
-        // Chamamos um endpoint que lê o cookie e retorna os dados
-        const response = await fetch('/api/auth/meta/session', {
-          method: 'GET',
-          credentials: 'include', // Importante pra enviar cookies
-        });
+        // Tenta ler do cookie primeiro
+        const cookies = document.cookie.split(';');
+        let sessionData = null;
 
-        if (!response.ok) {
-          const error = await response.json();
-          setError(error.error || 'Erro ao carregar contas');
-          setLoading(false);
-          return;
+        for (const cookie of cookies) {
+          const [name, value] = cookie.trim().split('=');
+          if (name === 'meta_oauth_session') {
+            try {
+              sessionData = JSON.parse(decodeURIComponent(value));
+              console.log('✅ Session encontrada no cookie');
+              break;
+            } catch (e) {
+              console.warn('Cookie exists but invalid JSON:', e);
+            }
+          }
         }
 
-        const data = await response.json();
-        if (data.accounts) {
-          setAccounts(data.accounts);
+        if (!sessionData) {
+          console.log('❌ Session não encontrada, tentando endpoint...');
+          // Tenta endpoint como fallback
+          const response = await fetch('/api/auth/meta/session', {
+            method: 'GET',
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            setError(error.error || error.message || 'Erro ao carregar contas');
+            console.error('Endpoint error:', error);
+            setLoading(false);
+            return;
+          }
+
+          const data = await response.json();
+          sessionData = data;
+        }
+
+        if (sessionData?.accounts) {
+          setAccounts(sessionData.accounts);
+          console.log('✅ Contas carregadas:', sessionData.accounts.length);
         } else {
-          setError('Nenhuma conta encontrada na sessão');
+          setError('Nenhuma conta encontrada');
+          console.warn('No accounts in session');
         }
 
         setLoading(false);
       } catch (err) {
         console.error('Error fetching session:', err);
-        setError('Erro ao carregar contas');
+        setError('Erro ao carregar contas: ' + (err instanceof Error ? err.message : 'Unknown'));
         setLoading(false);
       }
     };
@@ -101,6 +122,7 @@ export default function MetaSelectPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando suas contas Meta...</p>
+          <p className="text-xs text-gray-400 mt-2">Verifique o console para mais detalhes</p>
         </div>
       </div>
     );
