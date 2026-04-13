@@ -27,6 +27,8 @@ export function MetaConnectModal({
     setError(null);
     onConnecting?.(true);
 
+    console.log('🔗 Iniciando fluxo de conexão Meta...');
+
     try {
       // Abre popup com login Meta
       const width = 500;
@@ -34,35 +36,48 @@ export function MetaConnectModal({
       const left = typeof window !== 'undefined' ? (window.innerWidth - width) / 2 : 0;
       const top = typeof window !== 'undefined' ? (window.innerHeight - height) / 2 : 0;
 
+      console.log('📱 Abrindo popup:', {
+        url: '/api/auth/meta/connect',
+        width,
+        height,
+        left,
+        top,
+      });
+
       const popup = window.open(
         '/api/auth/meta/connect',
         'MetaLogin',
         `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
       );
 
+      console.log('✅ Popup object:', popup ? 'CREATED' : 'BLOCKED/NULL');
+
       if (!popup) {
+        console.error('❌ Popup bloqueado! Bloqueador de popups ativado?');
         setError('Bloqueador de pop-ups ativado. Desative para continuar.');
         setLoading(false);
         onConnecting?.(false);
         return;
       }
 
+      console.log('👁️ Monitorando popup...');
       // Monitora se o popup foi fechado
       const checkPopup = setInterval(() => {
         if (popup.closed) {
+          console.log('ℹ️ Popup fechado, aguardando sincronização...');
           clearInterval(checkPopup);
           setLoading(false);
           onConnecting?.(false);
 
           // Aguarda um pouco para o servidor processar
           setTimeout(() => {
-            // Recarrega para verificar se conectou
+            console.log('🔄 Recarregando página...');
             window.location.reload();
-          }, 1000);
+          }, 1500);
         }
-      }, 1000);
+      }, 500);
     } catch (err) {
-      console.error('Error opening popup:', err);
+      console.error('❌ Erro ao abrir popup:', err);
       setError('Erro ao abrir popup de login');
       setLoading(false);
       onConnecting?.(false);
