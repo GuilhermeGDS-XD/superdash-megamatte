@@ -1,0 +1,50 @@
+{
+  "name": "super-dash-ancliveopa-v3",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "preflight:prod": "node scripts/preflight-prod.mjs",
+    "migrate:prod": "node scripts/migrate-prod.mjs",
+    "chat:migrate-prod": "node scripts/migrate-prod.mjs"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.98.0",
+    "axios": "^1.13.6",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.34.3",
+    "lucide-react": "^0.575.0",
+    "next": "16.1.6",
+    "papaparse": "^5.5.3",
+    "react": "19.2.3",
+    "react-datepicker": "^9.1.0",
+    "react-day-picker": "^9.14.0",
+    "react-dom": "19.2.3",
+    "react-hook-form": "^7.71.2",
+    "recharts": "^3.7.0",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/dotenv": "^8.2.3",
+    "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19",
+    "@types/react-datepicker": "^7.0.0",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "supabase": "^2.76.15",
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5"
+  }
+}
