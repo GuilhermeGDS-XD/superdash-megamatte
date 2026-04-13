@@ -419,6 +419,23 @@ export default function HomePage() {
         setCampaigns(sorted);
         setCurrentPage(1);
         await fetchCreatives(sorted.map((campaign: any) => campaign.id));
+
+        // Validação assíncrona de status via Meta API (usa token OAuth do banco)
+        fetch('/api/campaigns/validate-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ campaigns: sorted })
+        }).then(res => res.json()).then(resData => {
+          if (resData?.updatedStatuses && Object.keys(resData.updatedStatuses).length > 0) {
+            setCampaigns(prev => {
+              const mapped = prev.map(c => ({
+                ...c,
+                status: resData.updatedStatuses[c.id] || c.status
+              }));
+              return sortCampaigns(mapped);
+            });
+          }
+        }).catch(err => console.error('Erro na validação de status:', err));
       } else {
         setCampaigns([]);
         setCreatives([]);
@@ -629,7 +646,16 @@ export default function HomePage() {
         </div>
         {user && (
           <div className="flex flex-wrap gap-4">
-
+            {anyAdminConnected && (
+              <button
+                onClick={() => setShowMetaModal(true)}
+                className="bg-white border-2 border-slate-100 hover:border-blue-100 text-slate-400 hover:text-blue-600 font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-100 uppercase tracking-widest text-[10px]"
+                title="Trocar conta Meta"
+              >
+                <img src="/meta-svgrepo-com.svg" className="w-4 h-4" alt="Meta" />
+                Conta Meta
+              </button>
+            )}
             <Link
               href="/admin/create-campaign"
               className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-8 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/20 uppercase tracking-widest text-xs"

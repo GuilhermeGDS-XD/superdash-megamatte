@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { MetaAdsService } from '@/services/metaAdsService';
 import { AdSyncService } from '@/services/adSyncService';
+import { supabaseAdmin } from '@/lib/supabase';
+import { EncryptionService } from '@/services/encryptionService';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -29,11 +31,27 @@ export async function GET(request: Request) {
         );
     }
 
-    // 2. Busca os dados de performance geral da campanha usando as variáveis de ambiente
+    // 2. Busca token OAuth do banco (primeira conta ativa)
+    const { data: metaAccount } = await supabaseAdmin
+      .from('meta_accounts')
+      .select('access_token')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    let apiToken = '';
+    if (metaAccount?.access_token) {
+      try {
+        apiToken = EncryptionService.decrypt(metaAccount.access_token);
+      } catch { /* token inválido, continua com string vazia */ }
+    }
+
+    // 3. Busca os dados de performance geral da campanha
     const metrics = await MetaAdsService.getCampaignMetrics(
       campaignId, 
       period, 
-      process.env.META_ADS_ACCESS_TOKEN || ''
+      apiToken
     );
     
     return NextResponse.json(metrics);

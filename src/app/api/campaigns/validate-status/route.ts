@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { MetaAdsService } from '@/services/metaAdsService';
+import { EncryptionService } from '@/services/encryptionService';
 
 export async function POST(request: Request) {
   try {
@@ -12,8 +13,24 @@ export async function POST(request: Request) {
 
     const updatedStatuses: Record<string, string> = {};
 
-    // Sem token Meta configurado, não há como validar — retorna vazio sem alterar nada
-    if (!process.env.META_ADS_ACCESS_TOKEN) {
+    // Busca o token OAuth salvo no banco (primeira conta ativa)
+    const { data: metaAccount } = await supabaseAdmin
+      .from('meta_accounts')
+      .select('access_token')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!metaAccount?.access_token) {
+      // Sem conta Meta conectada — não altera nada
+      return NextResponse.json({ updatedStatuses });
+    }
+
+    let apiToken: string;
+    try {
+      apiToken = EncryptionService.decrypt(metaAccount.access_token);
+    } catch {
       return NextResponse.json({ updatedStatuses });
     }
 
@@ -26,20 +43,15 @@ export async function POST(request: Request) {
         const metrics = await MetaAdsService.getCampaignMetrics(
           camp.meta_campaign_id,
           7,
-          process.env.META_ADS_ACCESS_TOKEN || ''
+          apiToken
         );
 
-        // Verifica se há pelo menos UM dia com qualquer métrica acima de 0 (custo, impressões, cliques ou conversões)
         const hasActivity = metrics.some(m => m.cost > 0 || m.impressions > 0 || m.conversions > 0 || m.clicks > 0);
-        
-        // Se não tem token Meta configurado ou não há dados, não altera o status
-        if (!hasActivity && !process.env.META_ADS_ACCESS_TOKEN) return;
-
         const newStatus = hasActivity ? 'Ativa' : 'Pausada';
 
         if (camp.status !== newStatus) {
-            updatedStatuses[camp.id] = newStatus;
-            // NÃO persiste no banco — apenas retorna sugestão ao frontend
+          updatedStatuses[camp.id] = newStatus;
+          await supabaseAdmin.from('campaigns').update({ status: newStatus }).eq('id', camp.id);
         }
       } catch (err: any) {
         console.error(`Erro ao validar status da campanha ${camp.id}:`, err.message);
