@@ -11,7 +11,12 @@ export async function POST(request: Request) {
     }
 
     const updatedStatuses: Record<string, string> = {};
-    
+
+    // Sem token Meta configurado, não há como validar — retorna vazio sem alterar nada
+    if (!process.env.META_ADS_ACCESS_TOKEN) {
+      return NextResponse.json({ updatedStatuses });
+    }
+
     // Ignorar as "Finalizadas" e as que não tem ID da Meta
     const relevantCampaigns = campaigns.filter(c => c.status !== 'Finalizada' && c.meta_campaign_id);
 
