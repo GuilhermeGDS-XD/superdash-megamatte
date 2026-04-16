@@ -7,8 +7,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space" });
 
 export const metadata: Metadata = {
-  title: "SuperDash | Gestão de Mídia Paga",
-  description: "Sistema interno de visualização e gestão de campanhas Ads",
+  title: "MegaMatte Dashboard",
+  description: "Portal de Gestão de Mídia - MegaMatte",
 };
 
 export default function RootLayout({
