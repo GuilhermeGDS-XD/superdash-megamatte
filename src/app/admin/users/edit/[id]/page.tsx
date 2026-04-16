@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@/lib/client';
 import { 
   ArrowLeft, 
   Save, 
@@ -27,7 +26,6 @@ export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
-  const supabase = createClient();
   const { user: currentUserProfile } = useUser();
 
   const [loading, setLoading] = useState(true);
@@ -47,32 +45,24 @@ export default function EditUserPage() {
   useEffect(() => {
     async function fetchUser() {
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (error) throw error;
-        if (data) {
-          setFormData({
-            name: data.full_name || '',
-            email: data.email || '',
-            role: normalizeRole(data.role),
-            password: '', // Senha não é retornada
-            can_view_logs: data.can_view_logs || false
-          });
-        }
+        const res = await fetch(`/api/admin/users/${userId}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setFormData({
+          name: data.user.full_name || '',
+          email: data.user.email || '',
+          role: normalizeRole(data.user.role),
+          password: '',
+          can_view_logs: data.user.can_view_logs || false
+        });
       } catch (err: any) {
-        console.error('Erro ao buscar usuário:', err.message);
         setError('Usuário não encontrado ou erro na conexão.');
       } finally {
         setLoading(false);
       }
     }
-
     if (userId) fetchUser();
-  }, [userId, supabase]);
+  }, [userId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,37 +71,19 @@ export default function EditUserPage() {
     setSuccess(false);
 
     try {
-      // 1. Atualizar dados na tabela public.users
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          full_name: formData.name,
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: formData.name,
           role: formData.role,
-          can_view_logs: formData.role === 'ADMIN' ? formData.can_view_logs : false 
+          password: formData.password,
+          can_view_logs: formData.can_view_logs
         })
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
-
-      // 2. Se houver nova senha, chamar a função RPC 'admin_change_password'
-      if (formData.password) {
-        const { error: passwordError } = await supabase.rpc('admin_change_password', {
-          user_id_param: userId,
-          new_password_param: formData.password
-        });
-
-        if (passwordError) {
-          throw new Error('Perfil atualizado, mas erro ao trocar senha: ' + passwordError.message);
-        }
-      }
-
-      // Registrar Log
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      await supabase.from('logs').insert({
-        user_id: currentUser?.id,
-        action: 'USER_UPDATE',
-        metadata: { updated_user_id: userId, changes: { name: formData.name, role: formData.role } }
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
       setSuccess(true);
       setTimeout(() => router.push('/admin/users/list'), 2000);

@@ -61,49 +61,28 @@ export default function CreateCampaignPage() {
 
     setLoading(true);
     setStatus(null);
-    const supabase = createClient();
 
     try {
-      // Garantir o user_id antes de inserir
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      const userId = authUser?.id;
-
-      if (!userId) {
-        throw new Error('Usuário não autenticado. Faça login novamente.');
-      }
-
-      console.log('Criando campanha para usuário:', userId);
-
-      const { data: campaignData, error: campaignError } = await supabase.from('campaigns').insert({
-        name: formData.name,
-        platforms: formData.platforms,
-        google_campaign_id: formData.platforms.includes('GOOGLE_ADS') ? formData.google_id : null,
-        meta_campaign_id: formData.platforms.includes('META_ADS') ? formData.meta_id : null,
-        google_start_date: formData.platforms.includes('GOOGLE_ADS') ? (formData.google_start || null) : null,
-        meta_start_date: formData.platforms.includes('META_ADS') ? (formData.meta_start || null) : null,
-        created_at: new Date().toISOString()
-      }).select().single();
-
-      if (campaignError) throw campaignError;
-
-      // 🔄 Gatilho automático para buscar criativos imediatamente após a criação
-      if (formData.platforms.includes('META_ADS') && formData.meta_id) {
-        // Chamada silenciosa para a API interna para iniciar a sincronização
-        fetch(`/api/meta-metrics?campaignId=${formData.meta_id}&supabaseId=${campaignData.id}&period=1`).catch(err => 
-          console.error('Falha no trigger inicial de criativos:', err)
-        );
-      }
-
-      // Registrar Log com user_id garantido e ID da campanha
-      await supabase.from('logs').insert({
-        user_id: userId,
-        action: 'CAMPAIGN_CREATE',
-        metadata: { 
-          campaign_id: campaignData.id,
-          campaign_name: formData.name,
-          platforms: formData.platforms
-        }
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: formData.name,
+          platforms: formData.platforms,
+          google_campaign_id: formData.google_id,
+          meta_campaign_id: formData.meta_id,
+          google_start_date: formData.google_start,
+          meta_start_date: formData.meta_start,
+          user_id: null
+        })
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (formData.platforms.includes('META_ADS') && formData.meta_id) {
+        fetch(`/api/meta-metrics?campaignId=${formData.meta_id}&supabaseId=${data.campaign.id}&period=1`).catch(() => {});
+      }
 
       setStatus({ type: 'success', message: 'Campanha criada com sucesso! Redirecionando...' });
       setTimeout(() => router.push('/'), 2000);

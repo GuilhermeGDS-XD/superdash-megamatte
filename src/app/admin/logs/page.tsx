@@ -1,6 +1,5 @@
 ﻿'use client';
 
-import { createClient } from '@/lib/client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@/hooks/useUser';
 import { useRouter } from 'next/navigation';
@@ -44,30 +43,14 @@ export default function LogsPage() {
   const [filterCampaign, setFilterCampaign] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
-  const supabase = createClient();
-
   async function fetchLogs() {
     setLoading(true);
     try {
-      // Agora buscamos com o join para pegar o nome do usuário
-      const { data, error } = await supabase
-        .from('logs')
-        .select('*, users(name)')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Erro Supabase:', error);
-        // Fallback para select('*') caso o join falhe por algum motivo de RLS
-        const { data: fallbackData } = await supabase
-          .from('logs')
-          .select('*')
-          .order('created_at', { ascending: false });
-        setLogs(fallbackData || []);
-      } else {
-        setLogs(data || []);
-      }
+      const res = await fetch('/api/admin/logs', { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) setLogs(data.logs || []);
     } catch (err) {
-      console.error('Erro Runtime:', err);
+      console.error('Erro ao buscar logs:', err);
     } finally {
       setLoading(false);
     }
@@ -95,7 +78,7 @@ export default function LogsPage() {
   // Lógica de Filtragem por NOME do usuário
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
-      const userName = log.users?.name || 'SISTEMA';
+      const userName = log.users?.full_name || 'SISTEMA';
       const matchAction = !filterAction || log.action === filterAction;
       const matchUser = !filterUser || userName.toLowerCase().includes(filterUser.toLowerCase());
       const matchCampaign = !filterCampaign || (log.metadata?.campaign_name && log.metadata.campaign_name.toLowerCase().includes(filterCampaign.toLowerCase()));

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/client';
 import { 
   User, 
   Mail, 
@@ -42,30 +41,18 @@ export default function ProfilePage() {
     e.preventDefault();
     setLoading(true);
     setStatus({ type: null, message: '' });
-    const supabase = createClient();
 
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) throw new Error('Usuário não autenticado.');
-
-      // 1. Atualizar na tabela public.users
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ name: formData.name })
-        .eq('id', authUser.id);
-
-      if (updateError) throw updateError;
-
-      // 2. Registrar Log
-      await supabase.from('logs').insert({
-        user_id: authUser.id,
-        action: 'PROFILE_UPDATE',
-        metadata: { old_name: user?.name, new_name: formData.name }
+      const res = await fetch('/api/admin/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: formData.name })
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
       setStatus({ type: 'success', message: 'Perfil atualizado com sucesso!' });
-      
-      // Atualizar o contexto do usuário
       if (refreshUser) await refreshUser();
 
     } catch (err: any) {

@@ -50,28 +50,24 @@ export default function EditCampaignPage() {
 
   useEffect(() => {
     async function loadCampaign() {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (data) {
+      const res = await fetch(`/api/campaigns/${id}`, { credentials: 'include' });
+      const data = await res.json();
+      if (data.campaign) {
         setFormData({
-          name: data.name,
-          platforms: data.platforms || [],
-          google_id: data.google_campaign_id || '',
-          meta_id: data.meta_campaign_id || '',
-          google_start: data.google_start_date || '',
-          meta_start: data.meta_start_date || '',
+          name: data.campaign.name,
+          platforms: data.campaign.platforms || [],
+          google_id: data.campaign.google_campaign_id || '',
+          meta_id: data.campaign.meta_campaign_id || '',
+          google_start: data.campaign.google_start_date || '',
+          meta_start: data.campaign.meta_start_date || '',
         });
-      } else if (error) {
+      } else {
         setStatus({ type: 'error', message: 'Erro ao carregar campanha.' });
       }
       setInitialLoading(false);
     }
     if (id) loadCampaign();
-  }, [id, supabase]);
+  }, [id]);
 
   const togglePlatform = (p: string) => {
     setFormData(prev => ({
@@ -93,34 +89,22 @@ export default function EditCampaignPage() {
     setStatus(null);
 
     try {
-      // Debug: Log dos dados sendo salvos
-      const updateData = {
-        name: formData.name,
-        platforms: formData.platforms,
-        google_campaign_id: formData.platforms.includes('GOOGLE_ADS') ? formData.google_id : null,
-        meta_campaign_id: formData.platforms.includes('META_ADS') ? formData.meta_id : null,
-        google_start_date: formData.platforms.includes('GOOGLE_ADS') ? (formData.google_start || null) : null,
-        meta_start_date: formData.platforms.includes('META_ADS') ? (formData.meta_start || null) : null,
-      };
-      console.log('📝 Dados sendo salvos:', updateData);
-
-      const { error } = await supabase
-        .from('campaigns')
-        .update(updateData)
-        .eq('id', id);
-
-      if (error) {
-        console.error('❌ Erro ao salvar:', error);
-        throw error;
-      }
-      console.log('✅ Campanha atualizada com sucesso!');
-
-      // Registrar Log
-      await supabase.from('logs').insert({
-        user_id: user?.id,
-        action: 'UPDATE_CAMPAIGN',
-        metadata: { campaign_id: id, campaign_name: formData.name }
+      const res = await fetch(`/api/campaigns/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: formData.name,
+          platforms: formData.platforms,
+          google_campaign_id: formData.google_id,
+          meta_campaign_id: formData.meta_id,
+          google_start_date: formData.google_start,
+          meta_start_date: formData.meta_start,
+          user_id: user?.id
+        })
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
       setStatus({ type: 'success', message: 'Campanha atualizada com sucesso!' });
       setTimeout(() => router.push(`/campaign/${id}`), 2000);
@@ -136,15 +120,16 @@ export default function EditCampaignPage() {
     
     setLoading(true);
     try {
-      const { error } = await supabase.from('campaigns').delete().eq('id', id);
-      if (error) throw error;
-
-      await supabase.from('logs').insert({
-        user_id: user?.id,
-        action: 'DELETE_CAMPAIGN',
-        metadata: { campaign_id: id, campaign_name: formData.name }
+      const res = await fetch(`/api/campaigns/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ user_id: user?.id, campaign_name: formData.name })
       });
-
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
       router.push('/');
     } catch (err: any) {
       setStatus({ type: 'error', message: err.message || 'Erro ao excluir campanha.' });

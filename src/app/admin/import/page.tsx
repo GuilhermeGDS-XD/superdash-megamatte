@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { createClient } from '@/lib/client';
 import { useUser } from '@/hooks/useUser';
 import { useRouter } from 'next/navigation';
 import { 
@@ -30,7 +29,6 @@ interface CSVRow {
 export default function ImportCSVPage() {
   const { user: profile, loading: userLoading } = useUser();
   const router = useRouter();
-  const supabase = createClient();
 
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
@@ -77,73 +75,23 @@ export default function ImportCSVPage() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: async (results) => {
-        const rows = results.data as CSVRow[];
-        let successCount = 0;
-        const errorList: string[] = [];
-
-        for (const row of rows) {
-          try {
-            // Validar campos obrigatórios
-            if (!row.id_campanha || !row.plataforma || !row.nome_campanha) {
-              errorList.push(`Linha ignorada: Dados incompletos.`);
-              continue;
-            }
-
-            // Normalizar plataforma
-            const plat = row.plataforma.toUpperCase().includes('GOOGLE') ? 'GOOGLE_ADS' : 'META_ADS';
-            
-            // Montar objeto de inserção
-            const insertData: Record<string, unknown> = {
-              name: row.nome_campanha,
-              platforms: [plat],
-              created_at: new Date().toISOString(),
-              status: 'Ativa'
-            };
-
-            // Verificar qual ID de campanha é
-            if (plat === 'GOOGLE_ADS') {
-              insertData.google_campaign_id = row.id_campanha;
-            } else {
-              insertData.meta_campaign_id = row.id_campanha;
-            }
-
-            const { data: insertedCampaign, error: insertError } = await supabase
-              .from('campaigns')
-              .insert(insertData)
-              .select('id')
-              .single();
-
-            if (insertError) throw insertError;
-
-            if (plat === 'META_ADS' && insertedCampaign?.id) {
-              // Disparo em background para iniciar sincronizacao de criativos apos import
-              fetch(`/api/meta-metrics?campaignId=${row.id_campanha}&supabaseId=${insertedCampaign.id}&period=1`).catch(() => {
-                // Nao bloqueia o fluxo de importacao
-              });
-            }
-
-            successCount++;
-
-          } catch (err: any) {
-            errorList.push(`Erro na campanha "${row.nome_campanha}": ${err.message}`);
-          }
+      complete: async (parsed) => {
+        const rows = parsed.data as any[];
+        try {
+          const res = await fetch('/api/admin/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ rows, user_id: profile?.id })
+          });
+          const data = await res.json();
+          setResults({ success: data.success, errors: data.errors || [] });
+        } catch (err: any) {
+          setError('Erro ao importar: ' + err.message);
+        } finally {
+          setImporting(false);
         }
-
-        setResults({ success: successCount, errors: errorList });
-        setImporting(false);
-        
-        // Log da ação
-        await supabase.from('logs').insert({
-          user_id: profile.id,
-          action: 'CSV_IMPORT',
-          metadata: { 
-            filename: file.name,
-            success_count: successCount,
-            error_count: errorList.length
-          }
-        });
-      },
+      }, 
       error: (err) => {
         setError('Erro ao ler o arquivo CSV: ' + err.message);
         setImporting(false);
