@@ -10,15 +10,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Busca o usuário diretamente na tabela public.users
-    // Seleciona 'encrypted_password' pois é o nome atual da coluna no banco
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, email, full_name, role, encrypted_password')
+      .select('id, email, full_name, role, password')
       .ilike('email', (email as string).trim())
       .maybeSingle();
 
     if (userError) {
-      console.error('[LOGIN] Erro ao consultar banco:', userError.message, JSON.stringify(userError));
+      console.error('[LOGIN] Erro ao consultar banco:', userError.message);
       return NextResponse.json({ error: 'Erro ao consultar banco de dados: ' + userError.message }, { status: 500 });
     }
 
@@ -27,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Comparação simples de senha (texto plano)
-    if (user.encrypted_password !== password) {
+    if (user.password !== password) {
       return NextResponse.json({ error: 'Senha incorreta.' }, { status: 401 });
     }
 
