@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
       .from('sessions')
       .insert({
         user_id: user.id,
-        token_hash: 'sess_' + Math.random().toString(36).substring(2) + Date.now(),
         expires_at: expiresAt.toISOString()
       })
       .select('id')
