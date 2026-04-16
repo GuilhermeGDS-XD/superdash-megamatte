@@ -1,6 +1,5 @@
 'use client';
 
-import { createClient } from '@/lib/client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/useUser';
@@ -158,7 +157,6 @@ export default function HomePage() {
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useUser();
-  const supabase = createClient();
 
   useEffect(() => {
     // Escuta evento de volta do navegador para remover o loading caso o user desista
@@ -169,18 +167,23 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchUsers() {
-      const { data } = await supabase.from('users').select('id, full_name').order('full_name');
-      if (data) {
-        // Mapeia full_name para name para manter compatibilidade com o componente
-        const formattedUsers = data.map((u: any) => ({
+      try {
+        const res = await fetch('/api/admin/users/list');
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        const usersData = data.users || [];
+        const formattedUsers = usersData.map((u: any) => ({
           ...u,
           name: u.full_name
         }));
         setUsers(formattedUsers);
+      } catch (err) {
+        console.error('Erro ao buscar usuários:', err);
       }
     }
     fetchUsers();
-  }, [supabase]);
+  }, []);
 
   // Busca as métricas agregadas do dashboard (leads, conversions, spend, etc.)
   // Faz chamadas paralelas para /api/meta-metrics de cada campanha ativa com meta_campaign_id
@@ -268,17 +271,7 @@ export default function HomePage() {
         const allIds = campaigns.map((c: any) => c.id);
         if (allIds.length > 0) {
           await new Promise(r => setTimeout(r, 2000));
-          // Busca direta (fetchCreatives ainda não foi declarado neste ponto do código)
-          const creativesRes: any[] = [];
-          for (let ci = 0; ci < allIds.length; ci += 200) {
-            const chunk = allIds.slice(ci, ci + 200);
-            const { data } = await supabase
-              .from('creatives')
-              .select('campaign_id, conversions, spend, ctr, platform')
-              .in('campaign_id', chunk);
-            if (data) creativesRes.push(...data);
-          }
-          setCreatives(creativesRes);
+          await fetchCreatives(allIds);
         }
       } catch (error) {
         console.error('[HomePage] Erro ao buscar métricas:', error);
@@ -288,7 +281,7 @@ export default function HomePage() {
     };
 
     fetchDashboardMetrics();
-  }, [campaigns, supabase]);
+  }, [campaigns]);
 
   const sortCampaigns = (campaignList: any[]) => {
     const statuses: Record<string, number> = { 'ATIVA': 0, 'PAUSADA': 1, 'FINALIZADA': 2 };
@@ -324,41 +317,26 @@ export default function HomePage() {
       return;
     }
 
-    const ID_CHUNK_SIZE = 200;
-    const ROW_BATCH_SIZE = 1000;
-    const allCreatives: any[] = [];
+    try {
+      // Construir query com múltiplos campaignId
+      const params = new URLSearchParams();
+      campaignIds.forEach(id => params.append('campaignId', id));
 
-    for (let i = 0; i < campaignIds.length; i += ID_CHUNK_SIZE) {
-      const campaignIdsChunk = campaignIds.slice(i, i + ID_CHUNK_SIZE);
-      let from = 0;
-      let hasMore = true;
+      const res = await fetch(`/api/creatives?${params.toString()}`);
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('creatives')
-          .select('campaign_id, conversions, spend, ctr, platform')
-          .in('campaign_id', campaignIdsChunk)
-          .range(from, from + ROW_BATCH_SIZE - 1);
-
-        if (error) {
-          console.error('Erro ao buscar criativos para estatísticas:', error);
-          setCreatives([]);
-          return;
-        }
-
-        const chunkRows = data || [];
-        allCreatives.push(...chunkRows);
-
-        if (chunkRows.length < ROW_BATCH_SIZE) {
-          hasMore = false;
-        } else {
-          from += ROW_BATCH_SIZE;
-        }
+      if (!res.ok) {
+        console.error('Erro ao buscar criativos:', await res.json());
+        setCreatives([]);
+        return;
       }
-    }
 
-    setCreatives(allCreatives);
-  }, [supabase]);
+      const data = await res.json();
+      setCreatives(data.creatives || []);
+    } catch (err) {
+      console.error('Erro ao buscar criativos para estatísticas:', err);
+      setCreatives([]);
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
