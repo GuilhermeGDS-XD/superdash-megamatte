@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { hashPassword } from '@/lib/auth-utils';
 
 export async function POST(request: NextRequest) {
@@ -12,8 +12,6 @@ export async function POST(request: NextRequest) {
     if (!email || !password || !name) {
       return NextResponse.json({ error: 'Todos os campos são obrigatórios.' }, { status: 400 });
     }
-
-    const supabase = createClient();
 
     // 2. Hash da senha
     const hashedPassword = await hashPassword(password);
