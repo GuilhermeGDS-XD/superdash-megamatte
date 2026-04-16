@@ -43,9 +43,6 @@ import { useUser } from '@/hooks/useUser';
 import { AdPlatform, MetaAdsMetrics } from '@/types';
 import { TopCreatives } from '@/components/dashboard/TopCreatives';
 import { CampaignAnalysisCard } from '@/components/dashboard/CampaignAnalysisCard';
-import { EcompayMetricsCard } from '@/components/dashboard/EcompayMetricsCard';
-import { useEcompayMetrics } from '@/hooks/useEcompayMetrics';
-import { SpotterCommercialSummary } from '@/components/dashboard/SpotterCommercialSummary';
 import LoadingDashboard from './loading';
 
 type MetricKey = 'cost' | 'conversions' | 'clicks' | 'ctr' | 'cpc' | 'reach' | 'frequency' | 'cpm' | 'spend' | 'lead' | 'cost_per_lead';
@@ -286,11 +283,6 @@ export default function CampaignDashboard() {
     ctr: totals.ctr,
     creativeCount: creativeCount,
   });
-
-  // Métricas Ecompay hoistadas para o FunnelSummary
-  const { metrics: ecompayMetrics, isLoading: ecompayLoading } = useEcompayMetrics(
-    campaign?.ecompay_product_id || undefined
-  );
 
   // chartData — agrupa dados diários por data (mesma fonte que os cards)
   const chartData = useMemo(() => {
@@ -533,9 +525,9 @@ export default function CampaignDashboard() {
         impressions={totals.impressions}
         clicks={totals.clicks}
         ctr={totals.ctr}
-        totalSold={ecompayMetrics?.totalProcessed ?? 0}
-        hasEcompay={!!campaign?.ecompay_product_id}
-        ecompayLoading={ecompayLoading}
+        totalSold={0}
+        hasEcompay={false}
+        ecompayLoading={false}
         score={analysis?.overallScore ?? 0}
         loading={loading}
       />
@@ -744,17 +736,9 @@ export default function CampaignDashboard() {
 
       </div> {/* fecha etapa 2 */}
 
-      {/* ETAPA 3 — CONVERSÃO */}
-      {campaign?.ecompay_product_id && (
-        <div className="pt-10 sm:pt-14 space-y-6 sm:space-y-8">
-          <StageLabel number="03" title="Conversão" description="Resultado das vendas geradas pela campanha" color="#10b981" />
-          <EcompayMetricsCard productId={campaign.ecompay_product_id} />
-        </div>
-      )}
-
       {/* ETAPA 4 — DIAGNÓSTICO */}
       <div className="pt-10 sm:pt-14 space-y-6 sm:space-y-8">
-        <StageLabel number="04" title="Diagnóstico" description="Análise estratégica e comparativo de canais" color="#7c3aed" />
+        <StageLabel number="03" title="Diagnóstico" description="Análise estratégica e comparativo de canais" color="#7c3aed" />
 
         {analysis && (
           <CampaignAnalysisCard analysis={analysis} isLoading={loading} />
@@ -911,16 +895,6 @@ export default function CampaignDashboard() {
       </div>
 
       </div> {/* fecha etapa 4 */}
-
-      {/* ETAPA 5 — RESUMO COMERCIAL (Spotter) */}
-      {campaign?.spotter_list_id && (
-        <SpotterCommercialSummary
-          originId={Number(campaign.spotter_list_id)}
-          period={actualPeriod}
-          campaignId={id as string}
-          campaignName={campaign?.name || ''}
-        />
-      )}
 
     </div>
   );

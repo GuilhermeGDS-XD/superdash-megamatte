@@ -51,7 +51,7 @@ curl --request GET \\
 
 &#x20; --header 'Authorization: Bearer \[coloque aqui o valor da key access\_token]
 
-Para esse projeto filtre a conta associada o email ecompay@anclivepa-sp.com.br
+Para esse projeto filtre a conta associada o email suporte@megamatte.com.br
 
 ------------------------------
 

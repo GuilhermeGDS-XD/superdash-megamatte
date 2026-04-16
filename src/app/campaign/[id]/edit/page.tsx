@@ -13,10 +13,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/hooks/useUser';
-import { useEcompayProducts } from '@/hooks/useEcompayProducts';
-import { EcompayProductSelect } from '@/components/ui/EcompayProductSelect';
-import { useSpotterOrigins } from '@/hooks/useSpotter';
-import { SpotterListSelect } from '@/components/ui/SpotterListSelect';
 
 // Ícones SVG customizados para Google e Meta
 const GoogleIcon = ({ className }: { className?: string }) => (
@@ -48,13 +44,8 @@ export default function EditCampaignPage() {
     meta_id: '',
     google_start: '',
     meta_start: '',
-    ecompay_product_id: '',
-    spotter_list_id: ''
   });
   
-  const { products: ecompayProducts, loading: ecompayLoading } = useEcompayProducts();
-  const { origins: spotterOrigins, loading: spotterLoading } = useSpotterOrigins();
-
   const supabase = createClient();
 
   useEffect(() => {
@@ -73,8 +64,6 @@ export default function EditCampaignPage() {
           meta_id: data.meta_campaign_id || '',
           google_start: data.google_start_date || '',
           meta_start: data.meta_start_date || '',
-          ecompay_product_id: data.ecompay_product_id || '',
-          spotter_list_id: data.spotter_list_id || ''
         });
       } else if (error) {
         setStatus({ type: 'error', message: 'Erro ao carregar campanha.' });
@@ -112,12 +101,8 @@ export default function EditCampaignPage() {
         meta_campaign_id: formData.platforms.includes('META_ADS') ? formData.meta_id : null,
         google_start_date: formData.platforms.includes('GOOGLE_ADS') ? (formData.google_start || null) : null,
         meta_start_date: formData.platforms.includes('META_ADS') ? (formData.meta_start || null) : null,
-        ecompay_product_id: formData.ecompay_product_id || null,
-        spotter_list_id: formData.spotter_list_id || null,
       };
       console.log('📝 Dados sendo salvos:', updateData);
-      console.log('🔑 ecompay_product_id:', formData.ecompay_product_id, 'Type:', typeof formData.ecompay_product_id);
-      console.log('🔑 spotter_list_id:', formData.spotter_list_id, 'Type:', typeof formData.spotter_list_id);
 
       const { error } = await supabase
         .from('campaigns')
@@ -303,31 +288,6 @@ export default function EditCampaignPage() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Produto Ecompay (Opcional) */}
-          <div className="space-y-4">
-            <label className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 pl-2">Produto Ecompay (Opcional)</label>
-            <EcompayProductSelect
-              value={formData.ecompay_product_id}
-              onChange={(id) => setFormData({...formData, ecompay_product_id: id})}
-              products={ecompayProducts}
-              loading={ecompayLoading}
-            />
-          </div>
-
-          {/* Lista Exact Spotter (Opcional) */}
-          <div className="space-y-4">
-            <label className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 pl-2">Origem Exact Spotter (Opcional)</label>
-            <SpotterListSelect
-              value={formData.spotter_list_id}
-              onChange={(id) => setFormData({...formData, spotter_list_id: id})}
-              origins={spotterOrigins}
-              loading={spotterLoading}
-            />
-            <p className="text-xs text-slate-400 pl-2">
-              Vincula os leads do Exact Spotter a esta campanha na tela Comercial.
-            </p>
           </div>
 
           {status && (

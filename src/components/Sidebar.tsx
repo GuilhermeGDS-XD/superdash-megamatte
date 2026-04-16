@@ -42,7 +42,6 @@ const Sidebar = ({ mobileMenuOpen, onCloseMobileMenu }: SidebarProps) => {
   // Itens básicos (acessíveis por todos)
   const navItems = [
     { name: 'Campanhas', href: '/', icon: Target },
-    { name: 'Comercial', href: '/comercial', icon: TrendingUp },
   ];
 
   // Adiciona itens extras apenas para usuários logados
