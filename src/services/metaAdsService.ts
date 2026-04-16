@@ -7,12 +7,10 @@ export class MetaAdsService {
   
   static async getCampaignMetrics(
     campaignId: string, 
-    periodDays: number, 
-    accessToken: string
+    periodDays: number,
   ): Promise<MetaAdsMetrics[]> {
     try {
-      // Prioriza token passado por parâmetro (do banco OAuth) sobre env var
-      const apiToken = accessToken || process.env.META_ADS_ACCESS_TOKEN;
+      const apiToken = process.env.META_ADS_ACCESS_TOKEN;
 
       if (!apiToken) {
         console.warn('Meta Ads: Token ausente, retornando vazio');

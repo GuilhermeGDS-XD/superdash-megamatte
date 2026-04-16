@@ -5,7 +5,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/useUser';
 import { useMetaConnection } from '@/hooks/useMetaConnection';
-import { MetaConnectModal } from '@/components/MetaConnectModal';
 import {
   Plus,
   Search,
@@ -140,8 +139,8 @@ export default function HomePage() {
   const [userFilter, setUserFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [showMetaModal, setShowMetaModal] = useState(false);
-  const { connected: metaConnected, anyAdminConnected, loading: metaLoading } = useMetaConnection();
+  // sem estado de modal de OAuth
+  const { anyAdminConnected } = useMetaConnection();
   const [dashboardMetrics, setDashboardMetrics] = useState<any>({
     leads: 0,
     conversions: 0,
@@ -595,31 +594,6 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6 sm:space-y-8 min-h-screen">
-      {/* Banner: Meta não conectado */}
-      {!metaLoading && !anyAdminConnected && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-2xl p-4 sm:p-6 shadow-lg shadow-orange-100/50"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="text-2xl mt-1">⚠️</div>
-              <div>
-                <h3 className="font-black text-orange-900 uppercase tracking-wide text-sm">Meta Ads não conectado</h3>
-                <p className="text-orange-700 text-sm mt-1">Autorize o acesso para sincronizar campanhas e métricas Meta automaticamente</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowMetaModal(true)}
-              className="whitespace-nowrap px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-orange-600/20"
-            >
-              Conectar agora
-            </button>
-          </div>
-        </motion.div>
-      )}
-
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter font-space italic uppercase leading-none sm:leading-tight">
@@ -629,16 +603,6 @@ export default function HomePage() {
         </div>
         {user && (
           <div className="flex flex-wrap gap-4">
-            {anyAdminConnected && (
-              <button
-                onClick={() => setShowMetaModal(true)}
-                className="bg-white border-2 border-slate-100 hover:border-blue-100 text-slate-400 hover:text-blue-600 font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-100 uppercase tracking-widest text-[10px]"
-                title="Trocar conta Meta"
-              >
-                <img src="/meta-svgrepo-com.svg" className="w-4 h-4" alt="Meta" />
-                Conta Meta
-              </button>
-            )}
             <Link
               href="/admin/create-campaign"
               className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-8 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/20 uppercase tracking-widest text-xs"
@@ -972,11 +936,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Modal de conexão Meta */}
-      <MetaConnectModal
-        open={showMetaModal}
-        onClose={() => setShowMetaModal(false)}
-      />
     </div>
   );
 }

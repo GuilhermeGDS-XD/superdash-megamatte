@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import { supabaseAdmin } from '@/lib/supabase';
-import { EncryptionService } from '@/services/encryptionService';
 
 interface MetaAction {
   action_type?: string;
@@ -37,25 +35,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'campaignId is required' }, { status: 400 });
   }
 
-  // Buscar token OAuth do banco
-  let apiToken = '';
-  try {
-    const { data: metaAccount } = await supabaseAdmin
-      .from('meta_accounts')
-      .select('access_token')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    if (metaAccount?.access_token) {
-      apiToken = EncryptionService.decrypt(metaAccount.access_token);
-    }
-  } catch { /* continua */ }
-
-  if (!apiToken) apiToken = process.env.META_ADS_ACCESS_TOKEN || '';
-
+  const apiToken = process.env.META_ADS_ACCESS_TOKEN;
   if (!apiToken) {
-    return NextResponse.json({ error: 'Token não configurado' }, { status: 500 });
+    return NextResponse.json({ error: 'META_ADS_ACCESS_TOKEN não configurado.' }, { status: 500 });
   }
 
   const baseUrl = 'https://graph.facebook.com/v17.0';

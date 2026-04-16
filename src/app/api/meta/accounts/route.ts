@@ -1,45 +1,36 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { EncryptionService } from '@/services/encryptionService';
 
+// GET /api/meta/accounts — busca todas as contas de anúncio vinculadas ao token
 export async function GET() {
+  const token = process.env.META_ADS_ACCESS_TOKEN;
+
+  if (!token) {
+    return NextResponse.json({ error: 'META_ADS_ACCESS_TOKEN não configurado.' }, { status: 500 });
+  }
+
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    // Buscar todas as contas de anúncio vinculadas ao token
+    const response = await fetch(
+      `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,currency,account_status&access_token=${token}`
     );
 
-    // Busca todas as contas Meta salvas no banco (OAuth)
-    const { data: metaAccounts, error } = await supabase
-      .from('meta_accounts')
-      .select('account_id, account_name, access_token, status')
-      .eq('status', 'active');
-
-    if (error) {
-      console.error('Erro ao buscar meta_accounts:', error);
-      return NextResponse.json({ error: 'Erro ao buscar contas salvas' }, { status: 500 });
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Meta API Error:', error);
+      return NextResponse.json({ error: 'Falha ao buscar contas da Meta' }, { status: response.status });
     }
 
-    if (!metaAccounts || metaAccounts.length === 0) {
-      return NextResponse.json({ accounts: [] });
-    }
+    const data = await response.json();
+    const metaAccounts = data.data || [];
 
-    // Mapeia sem expor o token ao frontend
-    const accounts = metaAccounts.map((acc) => {
-      let tokenValid = false;
-      try {
-        tokenValid = !!EncryptionService.decrypt(acc.access_token);
-      } catch {
-        tokenValid = false;
-      }
-      return {
-        account_id: acc.account_id,
-        name: acc.account_name,
-        account_status: 1,
-        currency: 'BRL',
-        token_valid: tokenValid,
-      };
-    });
+    // Mapear para formato esperado pelo frontend
+    const accounts = metaAccounts.map((acc: any) => ({
+      account_id: acc.id.replace('act_', ''), // Remove prefixo 'act_'
+      name: acc.name || acc.id, // Nome legível da conta
+      account_status: acc.account_status,
+      currency: acc.currency || 'BRL',
+      token_valid: true,
+    }));
 
     return NextResponse.json({ accounts });
   } catch (error: any) {

@@ -50,30 +50,13 @@ export class AdSyncService {
    * @param periodDays - Período em dias para filtrar os dados (coerente com dashboard)
    */
   static async syncMetaTopCreatives(campaignId: string, supabaseCampaignId: string, periodDays?: number): Promise<SyncResult> {
-    // Busca token OAuth do banco (primeira conta ativa)
-    let apiToken: string | undefined;
-    try {
-      const { supabaseAdmin } = await import('../lib/supabase');
-      const { EncryptionService } = await import('./encryptionService');
-      const { data: metaAccount } = await supabaseAdmin
-        .from('meta_accounts')
-        .select('access_token')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      if (metaAccount?.access_token) {
-        apiToken = EncryptionService.decrypt(metaAccount.access_token);
-      }
-    } catch { /* fallback para env var */ }
-
-    if (!apiToken) apiToken = process.env.META_ADS_ACCESS_TOKEN;
+    const apiToken = process.env.META_ADS_ACCESS_TOKEN;
 
     if (!apiToken) {
       return {
         success: false,
         syncedCount: 0,
-        error: 'Token da Meta não configurado.',
+        error: 'Token da Meta não configurado (META_ADS_ACCESS_TOKEN).',
       };
     }
 
