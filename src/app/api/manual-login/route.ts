@@ -18,11 +18,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error || !user) {
+      console.error('Usuário não encontrado ou erro na query:', error);
       return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 });
     }
 
+    console.log('Usuário encontrado:', user.email);
+    console.log('Hash no banco:', user.encrypted_password);
+
     // 2. Verifica a senha usando bcrypt
     const isPasswordCorrect = await comparePassword(password, user.encrypted_password);
+    
+    console.log('Senha correta?', isPasswordCorrect);
 
     if (!isPasswordCorrect) {
       return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 });
