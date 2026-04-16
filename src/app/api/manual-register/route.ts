@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       .from('users')
       .insert({
         email: (email as string).trim().toLowerCase(),
-        password: password,
+        encrypted_password: password,
         full_name: name,
         role: role || 'MANAGER'
       })

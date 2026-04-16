@@ -10,15 +10,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Busca o usuário diretamente na tabela public.users
+    // Seleciona 'encrypted_password' pois é o nome atual da coluna no banco
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, email, full_name, role, password')
+      .select('id, email, full_name, role, encrypted_password')
       .ilike('email', (email as string).trim())
       .maybeSingle();
 
     if (userError) {
-      console.error('[LOGIN] Erro ao consultar banco:', userError.message);
-      return NextResponse.json({ error: 'Erro ao consultar banco de dados.' }, { status: 500 });
+      console.error('[LOGIN] Erro ao consultar banco:', userError.message, JSON.stringify(userError));
+      return NextResponse.json({ error: 'Erro ao consultar banco de dados: ' + userError.message }, { status: 500 });
     }
 
     if (!user) {
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Comparação simples de senha (texto plano)
-    if (user.password !== password) {
+    if (user.encrypted_password !== password) {
       return NextResponse.json({ error: 'Senha incorreta.' }, { status: 401 });
     }
 
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
       .from('sessions')
       .insert({
         user_id: user.id,
+        token_hash: 'sess_' + Math.random().toString(36).substring(2) + Date.now(),
         expires_at: expiresAt.toISOString()
       })
       .select('id')
