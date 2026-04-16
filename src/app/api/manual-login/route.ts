@@ -14,21 +14,29 @@ export async function POST(request: NextRequest) {
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .eq('email', email)
+      .ilike('email', email.trim())
       .single();
 
     if (error || !user) {
-      console.error('Usuário não encontrado ou erro na query:', error);
+      console.error('Usuário não encontrado ou erro na query:', { 
+        email: email.trim(), 
+        error: error?.message,
+        code: error?.code 
+      });
       return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 });
     }
 
     console.log('Usuário encontrado:', user.email);
-    console.log('Hash no banco:', user.encrypted_password);
-
-    // 2. Verifica a senha usando bcrypt
-    const isPasswordCorrect = await comparePassword(password, user.encrypted_password);
     
-    console.log('Senha correta?', isPasswordCorrect);
+    // Suporte temporário para texto plano ou hash
+    let isPasswordCorrect = false;
+    if (user.encrypted_password === password) {
+      console.log('Login via texto plano (sucesso temporário)');
+      isPasswordCorrect = true;
+    } else {
+      isPasswordCorrect = await comparePassword(password, user.encrypted_password);
+      console.log('Login via bCrypt:', isPasswordCorrect);
+    }
 
     if (!isPasswordCorrect) {
       return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 });
