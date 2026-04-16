@@ -82,8 +82,8 @@ const Sidebar = ({ mobileMenuOpen, onCloseMobileMenu }: SidebarProps) => {
       <div className="flex h-full flex-col px-3 py-4 overflow-y-auto">
         <div className="flex items-center justify-between ps-2.5 mb-8">
           <div className="flex items-center">
-          <BarChart3 className="h-8 w-8 text-blue-500 mr-3" />
-          <span className="self-center text-xl font-bold whitespace-nowrap">SuperDash</span>
+          <BarChart3 className="h-8 w-8 text-orange-500 mr-3" />
+          <span className="self-center text-xl font-bold whitespace-nowrap">MegaMatte</span>
           </div>
           <button
             onClick={onCloseMobileMenu}

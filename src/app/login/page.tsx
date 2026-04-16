@@ -19,19 +19,28 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error: signInError, data } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const response = await fetch('/api/manual-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (signInError) {
-      console.error('Login detailed error:', signInError);
-      setError(`Erro: ${signInError.message}`);
-      setLoading(false);
-    } else {
-      console.log('Login success data:', data);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Erro ao realizar login.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Login manual success:', data.user);
       router.push('/');
       router.refresh();
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Erro de conexão com o servidor.');
+      setLoading(false);
     }
   };
 

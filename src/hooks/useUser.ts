@@ -23,6 +23,36 @@ export function useUser() {
     if (!activeProfilePromise || forceRefresh) {
       activeProfilePromise = (async () => {
         try {
+          // 1. Tenta pegar a sessão manual via Cookie
+          const getCookie = (name: string) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop()?.split(';').shift();
+          };
+
+          const sessionId = getCookie('sb-manual-token');
+
+          if (sessionId) {
+            // Busca a sessão na tabela customizada
+            const { data: sessionData, error: sessionError } = await supabase
+              .from('sessions')
+              .select('*, users(*)')
+              .eq('id', sessionId)
+              .gt('expires_at', new Date().toISOString())
+              .single();
+
+            if (!sessionError && sessionData && sessionData.users) {
+              const profile = sessionData.users;
+              return {
+                ...profile,
+                name: profile.full_name,
+                role: normalizeRole(profile.role)
+              };
+            }
+          }
+
+          // Fallback para Supabase Auth (caso precise migrar gradualmente, 
+          // ou se desejar remover de vez, pode retornar null aqui)
           const { data: { user: authUser } } = await supabase.auth.getUser();
 
           if (authUser) {
