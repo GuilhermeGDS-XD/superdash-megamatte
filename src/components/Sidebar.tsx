@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/hooks/useUser';
-import { createClient } from '@/lib/client';
 import { isAdmin, isSuperAdmin, roleLabel } from '@/lib/roles';
 
 interface SidebarProps {
@@ -29,13 +28,9 @@ interface SidebarProps {
 const Sidebar = ({ mobileMenuOpen, onCloseMobileMenu }: SidebarProps) => {
   const pathname = usePathname();
   const { user, loading } = useUser();
-  const supabase = createClient();
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Logout error:', error.message);
-    }
+    await fetch('/api/auth/me', { method: 'DELETE', credentials: 'include' });
     window.location.href = '/login';
   };
 
