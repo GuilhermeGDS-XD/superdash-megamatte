@@ -10,6 +10,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'E-mail e senha são obrigatórios.' }, { status: 400 });
     }
 
+    console.log('--- DEBUG LOGIN ---');
+    console.log('Email recebido:', email.trim());
+    console.log('Config Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'OK' : 'MISSING');
+    console.log('Config Service Role:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'OK' : 'MISSING');
+
     // 1. Busca o usuário diretamente na tabela public.users
     const { data: user, error } = await supabase
       .from('users')
@@ -18,12 +23,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error || !user) {
-      console.error('Usuário não encontrado ou erro na query:', { 
-        email: email.trim(), 
-        error: error?.message,
-        code: error?.code 
+      console.error('ERRO SUPABASE:', { 
+        message: error?.message,
+        code: error?.code,
+        details: error?.details
       });
-      return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 });
+      return NextResponse.json({ error: 'Credenciais inválidas ou erro de conexão.' }, { status: 401 });
     }
 
     console.log('Usuário encontrado:', user.email);
