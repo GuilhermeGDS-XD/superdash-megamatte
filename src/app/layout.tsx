@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import AppLayout from "@/components/layout/AppLayout";
+import { SecurityDashboardWrapper } from "@/components/SecurityDashboardWrapper";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space" });
@@ -22,6 +23,7 @@ export default function RootLayout({
         <AppLayout>
           {children}
         </AppLayout>
+        <SecurityDashboardWrapper />
       </body>
     </html>
   );
