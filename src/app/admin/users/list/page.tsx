@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/client';
 import { 
   Users, 
   UserPlus, 
@@ -18,38 +17,27 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { isAdmin, normalizeRole, roleLabel } from '@/lib/roles';
+import { isAdmin, roleLabel } from '@/lib/roles';
 
 export default function UsersListPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteStatus, setDeleteStatus] = useState<{ id: string | null; loading: boolean }>({ id: null, loading: false });
-  const supabase = createClient();
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      console.log('Buscando lista de usuários no Supabase Cloud...');
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('full_name');
-
-      if (error) {
-        console.error('Erro detalhado ao buscar usuários:', error.message, error.details, error.hint);
-        throw error;
-      }
-      
-      const visibleUsers = (data || []).filter((user: any) => normalizeRole(user.role) !== 'SUPER_ADMIN');
-      console.log('Usuários encontrados:', visibleUsers.length || 0);
-      setUsers(visibleUsers);
+      const res = await fetch('/api/admin/users', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setUsers(data.users || []);
     } catch (err) {
-      console.error('Erro na requisição de usuários:', err);
+      console.error('Erro ao buscar usuários:', err);
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
@@ -63,20 +51,17 @@ export default function UsersListPage() {
       // Nota: No Supabase, deletar da public.users geralmente exige permissão
       // ou um trigger que delete do auth.users. 
       // Em ambiente local sem triggers complexos, deletamos do public.users primeiro.
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      // Registrar Log
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      await supabase.from('logs').insert({
-        user_id: currentUser?.id,
-        action: 'USER_DELETE',
-        metadata: { deleted_user_id: userId, deleted_user_email: userEmail }
+      const res = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: userId })
       });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
 
       setUsers(prev => prev.filter(u => u.id !== userId));
     } catch (err: any) {
