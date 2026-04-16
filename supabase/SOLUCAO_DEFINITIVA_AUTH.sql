@@ -52,7 +52,7 @@ CREATE POLICY "authenticated_view_profiles" ON public.users FOR SELECT USING (tr
 INSERT INTO public.users (email, encrypted_password, full_name, role)
 VALUES (
     'ecom@agenciaecom.com.br', 
-    '$2b$10$SLgJoR5KKeZ9qA4grmKSrumaR75aBZJUXd45dh50eyTT.6ADwwkJC', 
+    '$2b$10$TtsXoWIH.QrgPrHyHh8UOOJfPpZM/Abaue2AU2Abs/gSYNXPBSxNS', 
     'MegaMatte Admin', 
     'SUPER_ADMIN'
 )
