@@ -368,50 +368,38 @@ export default function HomePage() {
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     try {
-      let baseQuery = supabase
-        .from('campaigns')
-        .select('*');
-
+      // Construir query params
+      const params = new URLSearchParams();
+      
       if (debouncedSearch && debouncedSearch.length >= 3) {
-        baseQuery = baseQuery.ilike('name', `%${debouncedSearch}%`);
+        params.append('search', debouncedSearch);
       }
 
       if (platformFilter) {
-        baseQuery = baseQuery.contains('platforms', [platformFilter]);
+        params.append('platform', platformFilter);
       }
 
       if (userFilter) {
-        baseQuery = baseQuery.eq('created_by', userFilter);
+        params.append('userId', userFilter);
       }
 
       if (statusFilter) {
-        baseQuery = baseQuery.eq('status', statusFilter);
+        params.append('status', statusFilter);
       }
 
-      const BATCH_SIZE = 1000;
-      let from = 0;
-      let hasMore = true;
-      const allCampaigns: any[] = [];
+      // Buscar via API (supabaseAdmin no backend)
+      const res = await fetch(`/api/campaigns?${params.toString()}`);
 
-      while (hasMore) {
-        const { data, error } = await baseQuery
-          .order('created_at', { ascending: false })
-          .range(from, from + BATCH_SIZE - 1);
-
-        if (error) {
-          console.error('Erro ao buscar campanhas:', error);
-          break;
-        }
-
-        const chunk = data || [];
-        allCampaigns.push(...chunk);
-
-        if (chunk.length < BATCH_SIZE) {
-          hasMore = false;
-        } else {
-          from += BATCH_SIZE;
-        }
+      if (!res.ok) {
+        const error = await res.json();
+        console.error('Erro ao buscar campanhas:', error);
+        setCampaigns([]);
+        setCreatives([]);
+        return;
       }
+
+      const data = await res.json();
+      const allCampaigns = data.campaigns || [];
 
       if (allCampaigns.length > 0) {
         const sorted = sortCampaigns(allCampaigns);
@@ -427,7 +415,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, debouncedSearch, platformFilter, userFilter, statusFilter, fetchCreatives]);
+  }, [debouncedSearch, platformFilter, userFilter, statusFilter, fetchCreatives]);
 
   // Initial Fetch & Update Effect
   useEffect(() => {

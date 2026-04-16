@@ -1,16 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-// GET /api/campaigns — Lista todas as campanhas
-export async function GET() {
-  const { data, error } = await supabaseAdmin
-    .from('campaigns')
-    .select('*')
-    .order('created_at', { ascending: false });
+// GET /api/campaigns — Lista campanhas com suporte a filtros
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get('search');
+  const platform = searchParams.get('platform');
+  const userId = searchParams.get('userId');
+  const status = searchParams.get('status');
+
+  let query = supabaseAdmin.from('campaigns').select('*');
+
+  if (search && search.length >= 3) {
+    query = query.ilike('name', `%${search}%`);
+  }
+
+  if (platform) {
+    query = query.contains('platforms', [platform]);
+  }
+
+  if (userId) {
+    query = query.eq('created_by', userId);
+  }
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ campaigns: data });
+  return NextResponse.json({ campaigns: data || [] });
 }
 
 // POST /api/campaigns — Cria nova campanha
