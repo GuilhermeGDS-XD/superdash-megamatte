@@ -12,24 +12,28 @@ export async function POST(request: NextRequest) {
 
     console.log('--- DEBUG LOGIN ---');
     console.log('Email recebido:', email.trim());
-    console.log('Config Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'OK' : 'MISSING');
-    console.log('Config Service Role:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'OK' : 'MISSING');
+    console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log('SR_KEY (prefix):', process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10));
 
     // 1. Busca o usuário diretamente na tabela public.users
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .ilike('email', email.trim())
-      .single();
+      .ilike('email', email.trim());
 
-    if (error || !user) {
-      console.error('ERRO SUPABASE:', { 
-        message: error?.message,
-        code: error?.code,
-        details: error?.details
-      });
-      return NextResponse.json({ error: 'Credenciais inválidas ou erro de conexão.' }, { status: 401 });
+    if (error) {
+      console.error('ERRO SUPABASE QUERY:', error);
+      return NextResponse.json({ error: 'Erro de banco: ' + error.message }, { status: 500 });
     }
+
+    const userData = Array.isArray(user) ? user[0] : user;
+
+    if (!userData) {
+      console.error('Usuário não encontrado na tabela public.users');
+      return NextResponse.json({ error: 'Conta não autorizada.' }, { status: 401 });
+    }
+
+    console.log('Usuário encontrado:', userData.email);
 
     console.log('Usuário encontrado:', user.email);
     
