@@ -35,8 +35,7 @@ export default function LoginPage() {
       }
 
       console.log('Login manual success:', data.user);
-      router.push('/');
-      router.refresh();
+      window.location.href = '/';
     } catch (err) {
       console.error('Login error:', err);
       setError('Erro de conexão com o servidor.');
