@@ -22,16 +22,23 @@ export async function GET() {
 
     const data = await response.json();
     const metaAccounts = data.data || [];
+    const envAccountId = process.env.META_AD_ACCOUNT_ID?.replace('act_', '');
 
     // Mapear para formato esperado pelo frontend
-    const accounts = metaAccounts.map((acc: any) => ({
-      account_id: acc.id.replace('act_', ''), // Remove prefixo 'act_'
-      name: acc.name || acc.id, // Nome legível da conta
-      account_status: acc.account_status,
-      currency: acc.currency || 'BRL',
-      token_valid: true,
-    }));
+    const accounts = metaAccounts.map((acc: any) => {
+      const id = acc.id.replace('act_', '');
+      return {
+        account_id: id,
+        name: acc.name || acc.id,
+        account_status: acc.account_status,
+        currency: acc.currency || 'BRL',
+        token_valid: true,
+        is_env_account: id === envAccountId
+      };
+    });
 
+    // Se temos uma conta na env, garantimos que ela apareça primeiro ou seja a única se o user preferir
+    // Por enquanto, apenas marcamos.
     return NextResponse.json({ accounts });
   } catch (error: any) {
     console.error('Route error fetching meta accounts:', error.message);

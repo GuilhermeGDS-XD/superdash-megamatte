@@ -180,7 +180,10 @@ export default function AdAccountsPage() {
             <h1 className="text-5xl font-black text-slate-900 tracking-tighter font-space italic uppercase">
               Contas de <span className="text-blue-600">Anúncios</span>
             </h1>
-            <p className="text-slate-400 font-medium font-space italic uppercase tracking-widest text-[10px] mt-1">Busque e sincronize campanhas disponíveis</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <p className="text-slate-400 font-medium font-space italic uppercase tracking-widest text-[10px]">Conexão estática ativa via .env.local</p>
+            </div>
           </div>
         </div>
 

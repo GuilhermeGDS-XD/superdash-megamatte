@@ -28,8 +28,32 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
-
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const envAccountId = process.env.META_AD_ACCOUNT_ID;
+  const apiToken = process.env.META_ADS_ACCESS_TOKEN;
+
+  // Se o banco estiver vazio e tivermos configurações na ENV, tenta carregar da Meta automaticamente
+  if ((!data || data.length === 0) && envAccountId && apiToken) {
+    console.log(`[AutoSync] Banco vazio. Iniciando sincronização automática para conta ${envAccountId}...`);
+    try {
+      // Fazemos o fetch interno da rota de sincronização
+      const syncUrl = new URL(request.url).origin + '/api/meta/campaigns';
+      const syncRes = await fetch(syncUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_id: envAccountId, account_name: 'Conta Principal (ENV)' })
+      });
+      
+      if (syncRes.ok) {
+        // Recarrega os dados do banco após a sincronização
+        const { data: syncedData } = await query.order('created_at', { ascending: false });
+        return NextResponse.json({ campaigns: syncedData || [] });
+      }
+    } catch (syncErr) {
+      console.error('[AutoSync] Falha na sincronização automática:', syncErr);
+    }
+  }
 
   return NextResponse.json({ campaigns: data || [] });
 }

@@ -1,27 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { EncryptionService } from '@/services/encryptionService';
 
 export async function POST() {
   try {
-    // Busca token OAuth do banco
-    const { data: metaAccount } = await supabaseAdmin
-      .from('meta_accounts')
-      .select('access_token')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (!metaAccount?.access_token) {
-      return NextResponse.json({ error: 'Nenhuma conta Meta conectada' }, { status: 400 });
-    }
-
-    let apiToken: string;
-    try {
-      apiToken = EncryptionService.decrypt(metaAccount.access_token);
-    } catch {
-      return NextResponse.json({ error: 'Token inválido. Reconecte a conta Meta.' }, { status: 401 });
+    const apiToken = process.env.META_ADS_ACCESS_TOKEN;
+    if (!apiToken) {
+      return NextResponse.json({ error: 'META_ADS_ACCESS_TOKEN não configurado no .env' }, { status: 500 });
     }
 
     // Busca campanhas com meta_campaign_id no banco
