@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(metrics);
   } catch (error: any) {
-    console.error('API Route Error:', error.message);
-    return NextResponse.json({ error: 'Failed to fetch Meta metrics' }, { status: 500 });
+    console.error('API Route Error:', error?.response?.data || error.message);
+    return NextResponse.json([], { status: 200 });
   }
 }

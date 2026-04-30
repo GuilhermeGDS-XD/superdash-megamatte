@@ -117,7 +117,10 @@ export async function GET(request: Request) {
 
     return NextResponse.json(creatives);
   } catch (error: any) {
-    console.error('[MetaCreatives] Erro:', error?.response?.data || error.message);
-    return NextResponse.json({ error: 'Falha ao buscar criativos' }, { status: 500 });
+    const errorData = error?.response?.data || error.message;
+    console.error('[MetaCreatives] Erro:', errorData);
+    
+    // Se for rate limit ou erro da API, retorna array vazio para não quebrar o dashboard
+    return NextResponse.json([], { status: 200 });
   }
 }

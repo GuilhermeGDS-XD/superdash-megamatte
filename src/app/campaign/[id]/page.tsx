@@ -141,21 +141,25 @@ export default function CampaignDashboard() {
 
   useEffect(() => {
     async function fetchCampaign() {
-      const { data } = await supabase
-        .from('campaigns')
-        .select('*, meta_campaign_id, google_campaign_id, start_date, created_at')
-        .eq('id', id)
-        .single();
-      console.log('Dados da Campanha carregados:', {
-        id: data?.id,
-        name: data?.name,
-        meta_id: data?.meta_campaign_id,
-        google_id: data?.google_campaign_id
-      });
-      if (data) setCampaign(data);
+      try {
+        const res = await fetch(`/api/campaigns/${id}`);
+        if (!res.ok) throw new Error('Falha ao buscar campanha');
+        const { campaign: data } = await res.json();
+        
+        if (data) {
+          console.log('Dados da Campanha carregados via API:', {
+            id: data.id,
+            name: data.name,
+            meta_id: data.meta_campaign_id
+          });
+          setCampaign(data);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar campanha:', err);
+      }
     }
     if (id) fetchCampaign();
-  }, [id, supabase]);
+  }, [id]);
 
   // Calcular número de dias para lifetime
   const actualPeriod = useMemo<number>(() => {
@@ -1021,15 +1025,6 @@ function FunnelSummary({
     },
     {
       number: '03',
-      title: 'Conversão',
-      label: 'Total Vendido',
-      metric: !hasEcompay ? '—' : ecompayLoading ? null : fmtCurr(totalSold),
-      sub: !hasEcompay ? 'Ecompay não configurado' : null,
-      color: '#10b981',
-      widthClass: 'sm:w-[76%] w-full mx-auto',
-    },
-    {
-      number: '04',
       title: 'Diagnóstico',
       label: 'Score de Performance',
       metric: loading ? null : String(score),
